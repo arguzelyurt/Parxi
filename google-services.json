@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "900589895459",
+    "project_id": "parxi-71f97",
+    "storage_bucket": "parxi-71f97.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:900589895459:android:aaa81d14f7eaaf379ad696",
+        "android_client_info": {
+          "package_name": "com.parxi.game"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyALi-nYGEI5gvaLb3urg-IrAPjiGLqlYIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

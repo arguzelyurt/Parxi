@@ -1,0 +1,96 @@
+{
+  "expo": {
+    "name": "Parxi",
+    "slug": "parxi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0F1B2D",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.parxi.game",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+    "android": {
+      "package": "com.parxi.game",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F1B2D",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "com.google.android.gms.permission.AD_ID"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "delayAppMeasurementInit": true,
+          "userTrackingUsageDescription": "Used to show ads that are more relevant to you. If you say no, the game works exactly the same.",
+          "skAdNetworkItems": [
+            "cstr6suwn9.skadnetwork"
+          ]
+        }
+      ],
+      "expo-iap",
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Used to show ads that are more relevant to you. If you say no, the game works exactly the same."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#56CCF2"
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/analytics",
+      "@react-native-firebase/crashlytics",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "dynamic"
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#0F1B2D"
+        }
+      ],
+      "expo-localization"
+    ],
+    "locales": {
+      "tr": "./locales/tr.json",
+      "en": "./locales/en.json"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a02d503a-4fc2-4f7d-bb32-314268f8cf71"
+      }
+    },
+    "owner": "arguzelyurt"
+  }
+}

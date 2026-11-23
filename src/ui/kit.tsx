@@ -1,0 +1,100 @@
+// Ortak parçalar: Glugo'daki düğme, kart ve başlık düzeni.
+import React from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { UI } from '../game/palette';
+
+export function Btn(props: {
+  label: string;
+  onPress(): void;
+  primary?: boolean;
+  gold?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  const filled = props.primary || props.gold;
+  return (
+    <Pressable
+      disabled={props.disabled || props.loading}
+      onPress={props.onPress}
+      style={({ pressed }) => [
+        styles.btn,
+        props.primary && { backgroundColor: UI.accent },
+        props.gold && { backgroundColor: UI.gold },
+        { opacity: props.disabled ? 0.45 : pressed ? 0.8 : 1 },
+      ]}
+    >
+      {props.loading ? (
+        <ActivityIndicator color={filled ? UI.bg : UI.text} />
+      ) : (
+        <Text style={[styles.btnText, filled && { color: UI.bg }]}>{props.label}</Text>
+      )}
+    </Pressable>
+  );
+}
+
+export function TextLink({ label, onPress }: { label: string; onPress(): void }) {
+  return (
+    <Pressable onPress={onPress} hitSlop={10} style={{ alignSelf: 'center', marginTop: 12 }}>
+      <Text style={styles.link}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function Coins({ coins, onPress }: { coins: number; onPress(): void }) {
+  return (
+    <Pressable onPress={onPress} hitSlop={12}>
+      <Text style={styles.coins}>● {coins} +</Text>
+    </Pressable>
+  );
+}
+
+/** Sekme ekranlarının üst başlığı: solda başlık, sağda coin */
+export function TabHeader({ title, coins, onCoins }: { title: string; coins: number; onCoins(): void }) {
+  return (
+    <View style={styles.tabHeader}>
+      <Text style={styles.tabTitle}>{title}</Text>
+      <Coins coins={coins} onPress={onCoins} />
+    </View>
+  );
+}
+
+export function Card({ children, style, onPress }: { children: React.ReactNode; style?: ViewStyle; onPress?(): void }) {
+  if (onPress)
+    return (
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, style, pressed && { opacity: 0.85 }]}>
+        {children}
+      </Pressable>
+    );
+  return <View style={[styles.card, style]}>{children}</View>;
+}
+
+export const kit = StyleSheet.create({
+  cardTitle: { color: UI.text, fontSize: 16, fontWeight: '700' },
+  cardSub: { color: UI.dim, fontSize: 12, marginTop: 4 },
+  section: { color: UI.dim, fontSize: 12, fontWeight: '800', letterSpacing: 1, marginTop: 18, marginBottom: 8 },
+});
+
+const styles = StyleSheet.create({
+  btn: {
+    alignSelf: 'stretch',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: UI.bg2,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  btnText: { color: UI.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  link: { color: UI.dim, fontSize: 13, textDecorationLine: 'underline' },
+  coins: { color: UI.gold, fontSize: 16, fontWeight: '700' },
+  tabHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  tabTitle: { color: UI.text, fontSize: 26, fontWeight: '900' },
+  card: { backgroundColor: UI.panel, borderRadius: 16, padding: 14 },
+});
