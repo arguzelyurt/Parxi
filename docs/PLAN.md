@@ -99,7 +99,8 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [x] O seviyede açılacak araba otoparkın altında gösteriliyor
 - [x] Garaj: piksel yerine özgün yumuşak çizimli araba görselleri (scripts/make_cars.py)
 - [x] Harita ilerlemesi ve harita ödülleri (Harita sekmesi; Günlük ana sayfaya taşındı)
-- [ ] Mağaza ekran görüntülerini yeni tasarımla yeniden üret
+- [x] iPad desteği: tablet açık (yalnız dikey, tam ekran), içerik ortada 820 genişliğe kadar, tablette büyük öğeler; iPad mağaza görüntüleri (store/ipad-13*)
+- [ ] iPhone mağaza ekran görüntülerini yeni tasarımla yeniden üret
 
 ### Faz 5 — Hesap ve bulut kayıt (ileride) · ayrıntı: docs/HESAP.md
 - [ ] İsteğe bağlı giriş: Apple, Google, e-posta/şifre (Firebase Authentication)

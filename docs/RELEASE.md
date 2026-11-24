@@ -39,7 +39,7 @@
 2. Uygulama içi satın almalar → `docs/STORE.md`'deki 9 ürünü aynı kimliklerle aç
 3. Uygulama Gizliliği → `docs/STORE.md`'deki tablo; gizlilik politikası URL'si
 4. Yaş sınırı anketi → beklenen 4+
-5. Görseller: İngilizce için `store/ios-6.7-en`, Türkçe için `store/ios-6.7`
+5. Görseller: İngilizce için `store/ios-6.7-en` + `store/ipad-13-en`, Türkçe için `store/ios-6.7` + `store/ipad-13`
 6. Fiyat: Ücretsiz; Kullanılabilirlik: bütün ülkeler
 
 ### 5. Google Play Console

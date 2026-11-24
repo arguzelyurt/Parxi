@@ -5,6 +5,7 @@ Uygulama Türkçe ve İngilizce. Telefonun dili Türkçe ise Türkçe, değilse 
 Görseller `store/` klasöründe:
 - `store/ios-6.7-en/`, `store/ios-6.7/` → İngilizce ve Türkçe, 6'şar ekran görüntüsü, 1290×2796 (App Store'da 6,9"/6,7" yuvası)
 - `store/android-en/`, `store/android/` → İngilizce ve Türkçe, 6'şar ekran görüntüsü 1080×2160 + `feature-graphic-1024x500.png`; `store/android/play-icon-512.png`
+- `store/ipad-13-en/`, `store/ipad-13/` → iPad için İngilizce ve Türkçe, 5'er ekran görüntüsü 2064×2752 (App Store'da 13" iPad yuvası; uygulama iPad'i desteklediği için zorunlu)
 
 Gizlilik politikası: https://claude.ai/artifact/5vJ2QPGdhm7hnXpg8c1JLM (ad ve e-posta eklenip herkese açık yapılmalı)
 
