@@ -32,40 +32,92 @@ def stroke(c, path, color, w, corner=0, alpha=255):
 def vgrad(y0, y1, cols, pos=None):
     return skia.GradientShader.MakeLinear([(0,y0),(0,y1)], [hx(x) for x in cols], pos)
 
-def body(c, pts, color, corner=26, top=None, bottom=GROUND-18):
-    ys=[p[1] for p in pts]; y0=min(ys)
-    sh = vgrad(y0, bottom, [mix(color,.35), color, color, mix(color,.35,'#000000')], [0,.35,.7,1])
-    fill(c, poly(pts), None, corner, sh)
+def body(c, pts, color, corner=26, top=None, bottom=GROUND-18, arches=None):
+    """Gövde: dikey ışık gradyanı, omuz parlaklığı, koyu eşik, çamurluk boşlukları, dış çizgi."""
+    ys=[p[1] for p in pts]; xs=[p[0] for p in pts]; y0=min(ys); x0=min(xs); x1=max(xs)
+    path = poly(pts)
+    sh = vgrad(y0, bottom, [mix(color,.45), mix(color,.12), color, mix(color,.38,'#000000')], [0,.3,.62,1])
+    fill(c, path, None, corner, sh)
+    c.save()
+    clip = skia.Path(path); pe = skia.CornerPathEffect.Make(corner) if corner else None
+    if pe:
+        p2 = skia.Path(); skia.Paint(PathEffect=pe).getFillPath(path, p2); clip = p2
+    c.clipPath(clip, doAntiAlias=True)
+    # omuz çizgisi parlaklığı
+    band = skia.GradientShader.MakeLinear([(0, y0), (0, y0 + (bottom - y0) * .55)], [hx('#FFFFFF', 0), hx('#FFFFFF', 70), hx('#FFFFFF', 0)], [0, .55, 1])
+    pb = skia.Paint(AntiAlias=True); pb.setShader(band); c.drawRect(skia.Rect(x0, y0, x1, y0 + (bottom - y0) * .55), pb)
+    # çapraz yansıma
+    for k, a in ((0, 34), (1, 20)):
+        xx = x0 + (x1 - x0) * (.32 + k * .1)
+        fill(c, poly([(xx, bottom), (xx + 60, y0), (xx + 84 + k * 10, y0), (xx + 24 + k * 10, bottom)]), '#FFFFFF', alpha=a)
+    # alt eşik
+    sill = skia.GradientShader.MakeLinear([(0, bottom - 26), (0, bottom + 4)], [hx('#000000', 0), hx('#000000', 90)])
+    ps = skia.Paint(AntiAlias=True); ps.setShader(sill); c.drawRect(skia.Rect(x0, bottom - 26, x1, bottom + 30), ps)
+    # çamurluk boşlukları (tekerleğin arkası koyu)
+    for (ax, ar) in (arches or []):
+        pa = skia.Paint(AntiAlias=True, Color=hx('#0B0D13')); c.drawCircle(ax, GROUND - ar, ar * 1.2, pa)
+        pr = skia.Paint(AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=3, Color=hx(mix(color, .5, '#000000'), 200))
+        c.drawCircle(ax, GROUND - ar, ar * 1.26, pr)
+    c.restore()
+    stroke(c, path, mix(color, .55, '#000000'), 2.2, corner, 170)
 
 def glass(c, pts, corner=10):
-    ys=[p[1] for p in pts]
-    sh = vgrad(min(ys), max(ys), ['#BFE8FF', '#5FA8D8', '#2B4F78'], [0, .45, 1])
+    ys=[p[1] for p in pts]; xs=[p[0] for p in pts]
+    x0=min(xs); x1=max(xs); yy=min(ys); y2=max(ys)
+    sh = vgrad(yy, y2, ['#D6F0FF', '#7FBDE6', '#355E8A', '#22395A'], [0, .3, .7, 1])
     fill(c, poly(pts), None, corner, sh)
-    # yansıma
-    xs=[p[0] for p in pts]; x0=min(xs); x1=max(xs); yy=min(ys); y2=max(ys)
-    c.save(); c.clipPath(poly(pts), doAntiAlias=True)
-    fill(c, poly([(x0+(x1-x0)*.25,y2),(x0+(x1-x0)*.45,yy),(x0+(x1-x0)*.55,yy),(x0+(x1-x0)*.35,y2)]), '#FFFFFF', 0, alpha=70)
+    c.save()
+    clip = poly(pts)
+    if corner:
+        p2 = skia.Path(); skia.Paint(PathEffect=skia.CornerPathEffect.Make(corner)).getFillPath(clip, p2); clip = p2
+    c.clipPath(clip, doAntiAlias=True)
+    fill(c, poly([(x0+(x1-x0)*.18,y2),(x0+(x1-x0)*.42,yy),(x0+(x1-x0)*.56,yy),(x0+(x1-x0)*.32,y2)]), '#FFFFFF', alpha=85)
+    fill(c, poly([(x0+(x1-x0)*.62,y2),(x0+(x1-x0)*.74,yy),(x0+(x1-x0)*.79,yy),(x0+(x1-x0)*.67,y2)]), '#FFFFFF', alpha=55)
     c.restore()
+    stroke(c, poly(pts), '#E3E8EF', 3, corner, 230)   # krom çerçeve
+    stroke(c, poly(pts), '#1A1D26', 1, corner, 160)
 
 def wheel(c, cx, r, rim='#C9D1DC', cy=None, spokes=5, arch=None):
     cy = cy or GROUND - r
     if arch: fill(c, skia.Path().addCircle(cx, cy, r*1.12), arch)
-    p=skia.Paint(AntiAlias=True, Color=hx('#1A1D26')); c.drawCircle(cx, cy, r, p)
-    p.setColor(hx('#2A2F3B')); c.drawCircle(cx, cy, r*.86, p)
-    sh = skia.GradientShader.MakeRadial((cx-r*.2, cy-r*.2), r*.7, [hx(mix(rim,.5)), hx(rim), hx(mix(rim,.35,'#000000'))])
-    p=skia.Paint(AntiAlias=True); p.setShader(sh); c.drawCircle(cx, cy, r*.58, p)
-    sp=skia.Paint(AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=r*.1, Color=hx(mix(rim,.45,'#000000')))
+    tire = skia.GradientShader.MakeRadial((cx, cy), r, [hx('#2E3340'), hx('#1E222C'), hx('#0F1117')], [0.6, 0.85, 1])
+    p=skia.Paint(AntiAlias=True); p.setShader(tire); c.drawCircle(cx, cy, r, p)
+    hl=skia.Paint(AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=r*.05, Color=hx('#FFFFFF', 40))
+    c.drawArc(skia.Rect(cx-r*.9, cy-r*.9, cx+r*.9, cy+r*.9), 200, 80, False, hl)
+    # jant
+    rr = r*.64
+    sh = skia.GradientShader.MakeLinear([(cx, cy-rr), (cx, cy+rr)], [hx(mix(rim,.6)), hx(rim), hx(mix(rim,.4,'#000000'))])
+    p=skia.Paint(AntiAlias=True); p.setShader(sh); c.drawCircle(cx, cy, rr, p)
+    p=skia.Paint(AntiAlias=True, Color=hx(mix(rim,.55,'#000000'))); c.drawCircle(cx, cy, rr*.84, p)   # iç gölge
+    p=skia.Paint(AntiAlias=True, Color=hx('#6B7280')); c.drawCircle(cx, cy, rr*.55, p)                 # fren diski
+    sp=skia.Paint(AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=r*.11, Color=hx(mix(rim,.25)))
+    sp.setStrokeCap(skia.Paint.kRound_Cap)
     for k in range(spokes):
-        a=k*2*math.pi/spokes; c.drawLine(cx+math.cos(a)*r*.18, cy+math.sin(a)*r*.18, cx+math.cos(a)*r*.52, cy+math.sin(a)*r*.52, sp)
-    p=skia.Paint(AntiAlias=True, Color=hx('#5C6575')); c.drawCircle(cx, cy, r*.14, p)
+        a=k*2*math.pi/spokes - math.pi/2
+        c.drawLine(cx+math.cos(a)*rr*.22, cy+math.sin(a)*rr*.22, cx+math.cos(a)*rr*.86, cy+math.sin(a)*rr*.86, sp)
+    lip=skia.Paint(AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=r*.06, Color=hx(mix(rim,.7)))
+    c.drawCircle(cx, cy, rr*.96, lip)
+    p=skia.Paint(AntiAlias=True, Color=hx(mix(rim,.3,'#000000'))); c.drawCircle(cx, cy, r*.16, p)
+    p=skia.Paint(AntiAlias=True, Color=hx('#FFFFFF', 160)); c.drawCircle(cx-r*.04, cy-r*.04, r*.06, p)
 
 def shadow(c, x0, x1):
-    p=skia.Paint(AntiAlias=True, Color=hx('#000000', 70)); p.setMaskFilter(skia.MaskFilter.MakeBlur(skia.kNormal_BlurStyle, 9))
-    c.drawOval(skia.Rect(x0, GROUND-10, x1, GROUND+12), p)
+    p=skia.Paint(AntiAlias=True, Color=hx('#000000', 80)); p.setMaskFilter(skia.MaskFilter.MakeBlur(skia.kNormal_BlurStyle, 12))
+    c.drawOval(skia.Rect(x0, GROUND-12, x1, GROUND+14), p)
+    p=skia.Paint(AntiAlias=True, Color=hx('#000000', 110)); p.setMaskFilter(skia.MaskFilter.MakeBlur(skia.kNormal_BlurStyle, 4))
+    c.drawOval(skia.Rect(x0+30, GROUND-5, x1-30, GROUND+5), p)
 
 def lamp(c, x, y, w, h, col, r=6):
-    fill(c, skia.Path().addRRect(skia.RRect.MakeRectXY(skia.Rect(x,y,x+w,y+h), r, r)), col)
-    fill(c, skia.Path().addRRect(skia.RRect.MakeRectXY(skia.Rect(x+w*.15,y+h*.15,x+w*.55,y+h*.5), r/2, r/2)), '#FFFFFF', alpha=150)
+    if col.upper() in ('#FFE066', '#FFD23F'):
+        g=skia.Paint(AntiAlias=True, Color=hx('#FFF3B0', 120)); g.setMaskFilter(skia.MaskFilter.MakeBlur(skia.kNormal_BlurStyle, 7))
+        c.drawRRect(skia.RRect.MakeRectXY(skia.Rect(x-3,y-3,x+w+6,y+h+3), r, r), g)
+        sh = skia.GradientShader.MakeLinear([(x, y), (x + w, y)], [hx('#FFFDF0'), hx('#FFE680')])
+    else:
+        g=skia.Paint(AntiAlias=True, Color=hx('#FF3B3B', 90)); g.setMaskFilter(skia.MaskFilter.MakeBlur(skia.kNormal_BlurStyle, 5))
+        c.drawRRect(skia.RRect.MakeRectXY(skia.Rect(x-4,y-2,x+w+2,y+h+2), r, r), g)
+        sh = skia.GradientShader.MakeLinear([(x, y), (x, y + h)], [hx('#FF8A8A'), hx('#D61F1F')])
+    fill(c, skia.Path().addRRect(skia.RRect.MakeRectXY(skia.Rect(x,y,x+w,y+h), r, r)), None, shader=sh)
+    stroke(c, skia.Path().addRRect(skia.RRect.MakeRectXY(skia.Rect(x,y,x+w,y+h), r, r)), '#1A1D26', 1.2, alpha=120)
+    fill(c, skia.Path().addRRect(skia.RRect.MakeRectXY(skia.Rect(x+w*.15,y+h*.15,x+w*.5,y+h*.45), r/2, r/2)), '#FFFFFF', alpha=200)
 
 def rect(c, x0,y0,x1,y1,col,r=4,alpha=255):
     fill(c, skia.Path().addRRect(skia.RRect.MakeRectXY(skia.Rect(x0,y0,x1,y1), r, r)), col, alpha=alpha)
@@ -88,8 +140,7 @@ def shine(c, pts, alpha=90):
 # ---------- Şablonlar ----------
 def car_generic(c, col, prof, win, pillars, wheels, wr, accent=None, lights=None, extra=None, rim='#C9D1DC', corner=26):
     xs=[p[0] for p in prof]; shadow(c, min(xs)+10, max(xs)-10)
-    for wx in wheels: fill(c, skia.Path().addCircle(wx, GROUND-wr, wr*1.14), '#14171F')
-    body(c, prof, col, corner)
+    body(c, prof, col, corner, arches=[(wx, wr) for wx in wheels])
     if extra and 'under' in extra: extra['under'](c)
     for w in win: glass(c, w)
     for px in pillars: rect(c, px[0], px[1], px[0]+px[2], px[3], mix(col,.15,'#000000'), 3)
@@ -113,7 +164,7 @@ def sedan(c, col, accent, kind='sedan'):
         if kind=='polis':
             rect(c,250,84,284,100,'#FF4D4D',5); rect(c,288,84,322,100,'#3A86FF',5)
             rect(c,40,196,578,216,'#3A86FF',4); rect(c,236,182,286,194,'#1A1D26',3,200)
-    car_generic(c,col,prof,win,[(298,108,10,152)],[160,465],38,lights=L,extra={'over':over})
+    car_generic(c,col,prof,win,[(298,108,10,152)],[160,465],38,lights=L,extra={'over':over},rim='#D7DEE8')
 
 def hatch(c, col, accent):
     prof=[(92,240),(86,190),(100,128),(160,96),(318,92),(392,140),(488,152),(524,176),(528,240)]
@@ -166,7 +217,7 @@ def sports(c, col, accent, kind='spor'):
     def L(c):
         lamp(c,588,176,26,10,'#FFE066',5); lamp(c,30,186,16,10,'#FF4D4D',5)
         rect(c,36,150,90,162,accent,4); rect(c,56,160,66,176,accent,2)  # rüzgârlık
-        rect(c,150,190,330,214,mix(col,.3,'#000000'),12,180)  # hava girişi
+        rect(c,236,194,420,208,mix(col,.35,'#000000'),7,120)  # yan hava girişi
         bumper(c,40,140,228,'#1A1D26'); bumper(c,480,612,228,'#1A1D26'); shine(c,[(60,180),(300,166),(590,180)],110)
         if kind=='altin':
             for (sx,sy,s) in [(120,120,9),(520,120,7),(420,80,6),(200,96,5)]:
