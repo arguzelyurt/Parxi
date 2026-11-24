@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 import { allMaps, MapInfo, mapOfLevel, mapReward } from '../core/maps';
 import { Booster } from '../core/monetization';
 import { UI } from '../game/palette';
@@ -13,7 +13,7 @@ const BOOSTER_ICON: Record<Booster, string> = { undo: '↶', hint: '💡', crane
 export default function MapScreen({ progress, onPlay, onShop }: { progress: Progress; onPlay(): void; onShop(): void }) {
   const current = mapOfLevel(progress.level).index;
   const maps = allMaps();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const y = useRef(0);
   useEffect(() => {
     const id = setTimeout(() => scroll.current?.scrollTo({ y: Math.max(0, y.current - 40), animated: false }), 50);
