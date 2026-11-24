@@ -1,7 +1,9 @@
 // Ekran düzeni: telefonda tam genişlik, iPad'de içerik ortada en fazla MAX_W genişliğinde.
+// Tablette yolcu, durak ve otopark hücreleri k kadar büyür.
 import { useWindowDimensions } from 'react-native';
 
-export const MAX_W = 680;
+/** Telefonda ekran genişliği, iPad'de içerik sütunu en fazla bu kadar */
+export const MAX_W = 820;
 
 export function useLayout() {
   const { width: screenW, height } = useWindowDimensions();

@@ -169,7 +169,7 @@ export default function GameScreen(props: Props) {
   const availW = width - 24 - 4 - ROAD * 2;
   // Otopark ekranın alt kısmına sığar; durak ve yolcular üstte büyük kalsın
   const availH = height * 0.46 - ROAD * 2;
-  const cs = Math.max(20, Math.min(48 * k, Math.floor(Math.min(availW / level.w, availH / level.h))));
+  const cs = Math.max(20, Math.min(k > 1 ? 80 : 48, Math.floor(Math.min(availW / level.w, availH / level.h))));
   const lotW = cs * level.w;
   const lotH = cs * level.h;
 
