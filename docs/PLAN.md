@@ -84,3 +84,9 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [ ] AdMob uygulama ve reklam birimi kimlikleri
 - [ ] App Store Connect ve Play Console kurulumu, Play kapalı testi (12 kişi / 14 gün)
 - [ ] EAS production derlemesi ve gönderim (`npm run release-check` temiz çıkmalı)
+
+### Faz 5 — Hesap ve bulut kayıt (ileride) · ayrıntı: docs/HESAP.md
+- [ ] İsteğe bağlı giriş: Apple, Google, e-posta/şifre (Firebase Authentication)
+- [ ] İlerlemenin Firestore'a kaydı, telefonlar arası eşitleme, çakışma kuralı
+- [ ] Uygulama içinden hesap silme, gizlilik politikası ve mağaza beyanlarının güncellenmesi
+- [ ] Parxi'de oturunca Glugo ve Floxi'ye taşıma

@@ -21,6 +21,9 @@ const config = read('src/config.ts');
 check(/PRIVACY_URL = 'https:\/\/[^']+'/.test(config), 'Gizlilik politikası adresi var', 'src/config.ts → PRIVACY_URL boş');
 check(/SUPPORT_EMAIL = '[^']+@[^']+'/.test(config), 'Destek e-postası var', 'src/config.ts → SUPPORT_EMAIL boş');
 
+const names = ['locales/en.json', 'locales/tr.json'].map((p) => JSON.parse(read(p)).CFBundleDisplayName);
+check(names.every((n) => n === app.name), `Telefondaki ad: ${app.name}`, `locales/*.json → CFBundleDisplayName "${names.join(', ')}" (app.json: ${app.name})`);
+
 const hash = (p: string) => (existsSync(p) ? createHash('md5').update(readFileSync(p)).digest('hex') : '');
 const glugoIcon = '../Floxi/assets/icon.png';
 check(!existsSync(glugoIcon) || hash(glugoIcon) !== hash('assets/icon.png'), 'İkon Parxi’ye ait', 'assets/icon.png hâlâ Floxi ikonu');
