@@ -40,13 +40,19 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 
 - Araçlar **ters çıkış sırasıyla** yerleştirilir: her yeni aracın önündeki yol, ondan sonra çıkacak araçlardan boş olmak zorunda. Böylece geride hangi araçlar kalırsa kalsın en az birinin önü daima açık.
 - Yolcu kuyruğu bu çıkış sırası oynanarak yazılır. Durakta aynı anda en fazla `wait` araç bekler (her zaman durak - 1).
-- Zorluk eğrisi: ızgara 4x5'ten 8x10'a, renk 2'den 7'ye, otobüs 4. seviyeden, tır 12. seviyeden itibaren. Kuyruk ilerledikçe daha karışık.
+- Zorluk eğrisi: ilk 3 seviye öğretici, 4. seviyeden itibaren hızla artar. Izgara 4x5'ten 8x10'a, renk 2'den 7'ye (23. seviyede 7), otobüs 3. seviyeden, tır 8. seviyeden itibaren. Kuyruk ilerledikçe daha karışık.
 - Her 10. seviye **Zor**: durakta 4 yer, ödül x2.
-- 16. seviyeden sonra **gizli araçlar**: önü açılana kadar rengi "?" görünür.
-- 24. seviyeden sonra **bariyer**: bir hücreyi kapatır, üstündeki sayı kadar araç yola çıkınca kalkar.
-- 36. seviyeden sonra **kilitli araç**: rozetinin rengindeki bir araç yola çıkana kadar yerinden oynamaz.
-- 48. seviyeden sonra **VIP yolcu** (taçlı): sıranın önüne gelince sınırlı dokunuş bekler, binemezse seviye kaybedilir.
+- 10. seviyeden sonra **gizli araçlar**: önü açılana kadar rengi "?" görünür.
+- 16. seviyeden sonra **bariyer**: bir hücreyi kapatır, üstündeki sayı kadar araç yola çıkınca kalkar.
+- 24. seviyeden sonra **kilitli araç**: rozetinin rengindeki bir araç yola çıkana kadar yerinden oynamaz.
+- 32. seviyeden sonra **VIP yolcu** (taçlı): sıranın önüne gelince sınırlı dokunuş bekler, binemezse seviye kaybedilir.
 - Engeller çözümün zaman çizelgesine göre yerleştirilir (bariyerin kalkma sayısı ve kilidin anahtarı, çözümde o araçtan önce dolar), bu yüzden çözülebilirlik garantisi bozulmaz. Her engel ilk geldiği seviyede bir tanıtım kartıyla anlatılır.
+
+## Harita ilerlemesi (src/core/maps.ts)
+
+- 20 harita: Mahalle, Çarşı, Liman, Tren Garı, Havalimanı … Zirve. Her harita bir öncekinden bir seviye uzun: 1. harita 10 seviye (1–10), 2. harita 11 (11–21) … 5. harita 60. seviyede biter, 20. harita 390. seviyede.
+- Harita tamamlanınca ödül (bir kez): 150 + 75 × harita coin, ipucu, geri al; 3. haritadan itibaren vinç, 5. haritadan itibaren +1 yer. Ödül harita ilerledikçe büyür.
+- Harita sekmesinde bütün haritalar: tamamlananlar ✓, şu anki seviye noktalarıyla, sonrakiler kilitli; her kartta ödül görünür.
 
 ## Fazlar
 
@@ -69,7 +75,7 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [x] Firebase (proje: parxi-71f97): Analytics, Crashlytics, Remote Config bağlandı. İlk veriler telefonda geliştirme derlemesi çalışınca görünür
 - [x] EAS projesi; ilk iOS geliştirme derlemesi başarılı
 - [ ] Gerçek cihazda reklam + sandbox satın alma testi
-- [x] Yeni engeller: bariyer (24+), kilitli araç (36+), VIP yolcu (48+); tanıtım kartları; tıkanma türüne göre kurtarma (+1 yer, VIP'ye ek sabır, vinç)
+- [x] Yeni engeller: bariyer (16+), kilitli araç (24+), VIP yolcu (32+); tanıtım kartları; tıkanma türüne göre kurtarma (+1 yer, VIP'ye ek sabır, vinç)
 - [ ] Oyuncu testinden sonra engellerin geliş seviyeleri ve sıklığı ayarlanacak
 
 ### Faz 3 — Meta ve tekrar gelme
@@ -84,6 +90,15 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [ ] AdMob uygulama ve reklam birimi kimlikleri
 - [ ] App Store Connect ve Play Console kurulumu, Play kapalı testi (12 kişi / 14 gün)
 - [ ] EAS production derlemesi ve gönderim (`npm run release-check` temiz çıkmalı)
+
+### Faz 4.5 — İlk test geri bildirimi (Kasım 2026)
+- [x] Menülerde daha az yazı, daha büyük punto; ana sayfada büyük Oyna, harita ilerlemesi, üç kısayol (Günlük, Garaj, Görevler)
+- [x] Zorluk 4. seviyeden itibaren artıyor, engeller daha erken
+- [x] Oyun ekranı: yolcular durakta ve büyük, durak yerleri belirgin, otopark daha küçük
+- [x] O seviyede açılacak araba otoparkın altında gösteriliyor
+- [x] Garaj: piksel yerine özgün yumuşak çizimli araba görselleri (scripts/make_cars.py)
+- [x] Harita ilerlemesi ve harita ödülleri (Harita sekmesi; Günlük ana sayfaya taşındı)
+- [ ] Mağaza ekran görüntülerini yeni tasarımla yeniden üret
 
 ### Faz 5 — Hesap ve bulut kayıt (ileride) · ayrıntı: docs/HESAP.md
 - [ ] İsteğe bağlı giriş: Apple, Google, e-posta/şifre (Firebase Authentication)
