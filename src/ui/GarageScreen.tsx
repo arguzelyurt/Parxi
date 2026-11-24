@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLayout } from './layout';
 import { CAR_MODELS, CarModel, nextCar } from '../core/garage';
 import { UI } from '../game/palette';
 import { Progress } from '../game/storage';
@@ -27,8 +28,9 @@ export default function GarageScreen({
   onShop(): void;
   onFavorite(key: string): void;
 }) {
-  const { width } = useWindowDimensions();
-  const tile = Math.floor((width - 24 * 2 - 12) / 2);
+  const { width, tablet } = useLayout();
+  const cols = tablet ? 3 : 2;
+  const tile = Math.floor((width - 24 * 2 - 12 * (cols - 1)) / cols);
   const done = levelsDone(progress);
   const open = CAR_MODELS.filter((m) => m.level <= Math.max(1, done)).length;
   const next = nextCar(done);

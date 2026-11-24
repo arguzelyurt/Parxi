@@ -58,6 +58,7 @@ import MarketScreen from './src/ui/MarketScreen';
 import DailyScreen from './src/ui/DailyScreen';
 import SettingsScreen from './src/ui/SettingsScreen';
 import TabBar, { Tab } from './src/ui/TabBar';
+import { MAX_W } from './src/ui/layout';
 import { buyItem, equipItem, Wallet } from './src/core/market';
 
 type Screen = { kind: 'tabs' } | { kind: 'level' } | { kind: 'daily'; key: string };
@@ -369,6 +370,8 @@ export default function App() {
               : UI.bg,
         }}
       >
+        {/* iPad'de içerik ortada, telefon genişliğine yakın bir sütunda */}
+        <View style={{ flex: 1, width: '100%', maxWidth: MAX_W, alignSelf: 'center' }}>
         {progress ? (
           <>
             {screen.kind === 'tabs' && (
@@ -487,6 +490,7 @@ export default function App() {
             <ActivityIndicator color={UI.accent} />
           </View>
         )}
+        </View>
       </SafeAreaView>
     </SafeAreaProvider>
   );

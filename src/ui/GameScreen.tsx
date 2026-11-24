@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLayout } from './layout';
 import * as Haptics from 'expo-haptics';
 import {
   addDockSlot,
@@ -131,7 +132,7 @@ export default function GameScreen(props: Props) {
   const colorBlind = progress.colorBlind;
   const theme = themeFor(progress.cosmetics.theme);
   const skin = useMemo(() => ({ car: carStyleFor(progress.cosmetics.car), colorBlind }), [progress.cosmetics.car, colorBlind]);
-  const { width, height } = useWindowDimensions();
+  const { width, height, k } = useLayout();
   const [s, setS] = useState<State>(() => initialState(level));
   const [history, setHistory] = useState<State[]>([]);
   const [moving, setMoving] = useState<Moving | null>(null);
@@ -168,7 +169,7 @@ export default function GameScreen(props: Props) {
   const availW = width - 24 - 4 - ROAD * 2;
   // Otopark ekranın alt kısmına sığar; durak ve yolcular üstte büyük kalsın
   const availH = height * 0.46 - ROAD * 2;
-  const cs = Math.max(20, Math.min(48, Math.floor(Math.min(availW / level.w, availH / level.h))));
+  const cs = Math.max(20, Math.min(48 * k, Math.floor(Math.min(availW / level.w, availH / level.h))));
   const lotW = cs * level.w;
   const lotH = cs * level.h;
 
@@ -441,13 +442,13 @@ export default function GameScreen(props: Props) {
   const stars = starsFor(level, s);
   const winResult = (): WinResult => ({ stars, launches: s.taps, parked: s.peak, usedHelp: usedHelp.current });
 
-  const slotW = Math.min(80, Math.floor((width - 24 - 20 - (s.dock.length - 1) * 6) / s.dock.length));
+  const slotW = Math.min(80 * k, Math.floor((width - 24 - 20 - (s.dock.length - 1) * 6) / s.dock.length));
   const dockCarLen = slotW - 8;
 
   const infoText = message ?? t('game.idle', { n: passengersLeft(level, s) });
   const vipLeft = vipPatienceLeft(level, s);
   const tutText = tut >= 0 ? t(`tut.${tut}` as Key) : null;
-  const queueVisible = Math.max(5, Math.floor((width - 90) / 25));
+  const queueVisible = Math.max(5, Math.floor((width - 90 * k) / (25 * k)));
   const queue = level.queue.slice(s.qi, s.qi + queueVisible);
   const more = passengersLeft(level, s) - queue.length;
 
@@ -478,7 +479,7 @@ export default function GameScreen(props: Props) {
             <Text style={styles.stopSign}>🚏</Text>
             {queue.map((c, i) => (
               <View key={`${s.qi + i}`}>
-                <PersonView color={c} size={i === 0 ? 46 : 34} front={i === 0} vip={level.vip?.qi === s.qi + i} />
+                <PersonView color={c} size={(i === 0 ? 46 : 34) * k} front={i === 0} vip={level.vip?.qi === s.qi + i} />
                 {i === 0 && vipLeft !== null && (
                   <View style={[styles.vipBadge, vipLeft <= 1 && { backgroundColor: UI.danger }]}>
                     <Text style={styles.vipBadgeText}>⏳{Math.max(0, vipLeft)}</Text>
@@ -490,7 +491,7 @@ export default function GameScreen(props: Props) {
           </View>
           <View style={styles.slots}>
             {s.dock.map((p, i) => (
-              <View key={i} style={[styles.slot, { width: slotW, borderColor: theme.stop }, !!p && { borderStyle: 'solid', backgroundColor: theme.board }]}>
+              <View key={i} style={[styles.slot, { width: slotW, height: 84 * k, borderColor: theme.stop }, !!p && { borderStyle: 'solid', backgroundColor: theme.board }]}>
                 {p ? (
                   <View style={{ alignItems: 'center' }}>
                     <VehicleView v={{ ...p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarLen / lenOf(p.v)} />
