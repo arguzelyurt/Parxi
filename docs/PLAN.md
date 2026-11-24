@@ -40,7 +40,7 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 
 - Araçlar **ters çıkış sırasıyla** yerleştirilir: her yeni aracın önündeki yol, ondan sonra çıkacak araçlardan boş olmak zorunda. Böylece geride hangi araçlar kalırsa kalsın en az birinin önü daima açık.
 - Yolcu kuyruğu bu çıkış sırası oynanarak yazılır. Durakta aynı anda en fazla `wait` araç bekler (her zaman durak - 1).
-- Zorluk eğrisi: ilk 3 seviye öğretici, 4. seviyeden itibaren hızla artar. Izgara 4x5'ten 8x10'a, renk 2'den 7'ye (23. seviyede 7), otobüs 3. seviyeden, tır 8. seviyeden itibaren. Kuyruk ilerledikçe daha karışık.
+- Zorluk eğrisi: ilk 3 seviye öğretici, 4. seviyeden itibaren hızla artar. Izgara 6x5'ten 10x11'e (seviye başına ~20-28 araç), renk 2'den 7'ye (23. seviyede 7), otobüs 3. seviyeden, tır 8. seviyeden itibaren. Kuyruk ilerledikçe daha karışık.
 - Her 10. seviye **Zor**: durakta 4 yer, ödül x2.
 - 10. seviyeden sonra **gizli araçlar**: önü açılana kadar rengi "?" görünür.
 - 16. seviyeden sonra **bariyer**: bir hücreyi kapatır, üstündeki sayı kadar araç yola çıkınca kalkar.
@@ -94,6 +94,7 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 ### Faz 4.5 — İlk test geri bildirimi (Kasım 2026)
 - [x] Menülerde daha az yazı, daha büyük punto; ana sayfada büyük Oyna, harita ilerlemesi, üç kısayol (Günlük, Garaj, Görevler)
 - [x] Zorluk 4. seviyeden itibaren artıyor, engeller daha erken
+- [x] Otopark durakla aynı genişlikte, 9x8'den 10x11'e; seviye başına ~20-28 araç; araçlar üstten görünüş çizimleri (scripts/make_vehicles.py), ön/arka belirgin; doygun ve ayırt edici renkler
 - [x] Oyun ekranı: yolcular durakta ve büyük, durak yerleri belirgin, otopark daha küçük
 - [x] O seviyede açılacak araba otoparkın altında gösteriliyor
 - [x] Garaj: piksel yerine özgün yumuşak çizimli araba görselleri (scripts/make_cars.py)

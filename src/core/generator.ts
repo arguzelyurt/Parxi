@@ -128,8 +128,14 @@ export function buildLot(rng: Rng, d: Difficulty): Vehicle[] {
 }
 
 /** Araçlara renk dağıtır: her renkten en az bir araç */
+/**
+ * Az renkli seviyelerde birbirine benzeyen renkler (kırmızı-pembe-turuncu) yan yana gelmesin diye
+ * renkler en ayırt edici sırayla seçilir: mavi, sarı, kırmızı, yeşil, mor, turuncu, turkuaz, pembe.
+ */
+const DISTINCT = [5, 2, 0, 3, 6, 1, 4, 7];
+
 function paint(rng: Rng, vs: Vehicle[], colors: number): number[] {
-  const palette = shuffle([...Array(PALETTE_SIZE).keys()], rng).slice(0, Math.min(colors, vs.length));
+  const palette = DISTINCT.slice(0, Math.min(colors, vs.length, PALETTE_SIZE));
   const order = shuffle(vs.map((_, i) => i), rng);
   const out = new Array(vs.length).fill(0);
   order.forEach((vi, k) => (out[vi] = k < palette.length ? palette[k] : pick(rng, palette)));
