@@ -36,6 +36,8 @@ export interface Progress {
   tutorialDone: boolean;
   /** Tanıtım kartı gösterilen engeller */
   seenIntro: string[];
+  /** Ödülü verilmiş haritalar */
+  mapsClaimed: number[];
   /** Günlük Otopark: son bitirilen gün, seri, gün → yıldız */
   daily: { lastDoneKey: string | null; streak: number; stars: Record<string, number> };
   ads: AdState;
@@ -77,6 +79,7 @@ export const defaultProgress = (): Progress => ({
   favoriteCar: 'minik',
   tutorialDone: false,
   seenIntro: [],
+  mapsClaimed: [],
   daily: { lastDoneKey: null, streak: 0, stars: {} },
   ads: initialAdState(todayUTC()),
   skipRewarded: false,
@@ -139,6 +142,7 @@ export async function loadProgress(): Promise<Progress> {
     p.daily = { ...d.daily, ...saved.daily };
     p.cosmetics = { ...d.cosmetics, ...saved.cosmetics };
     if (!Array.isArray(p.seenIntro)) p.seenIntro = [];
+    if (!Array.isArray(p.mapsClaimed)) p.mapsClaimed = [];
     if (!(p.speed in SPEED_MS)) p.speed = 'normal';
     if (!['auto', 'tr', 'en'].includes(p.lang)) p.lang = 'auto';
     p.ads = { ...initialAdState(todayUTC()), ...saved.ads, firstSession: !saved.ads };

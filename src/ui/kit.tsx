@@ -69,24 +69,24 @@ export function Card({ children, style, onPress }: { children: React.ReactNode; 
 }
 
 export const kit = StyleSheet.create({
-  cardTitle: { color: UI.text, fontSize: 16, fontWeight: '700' },
-  cardSub: { color: UI.dim, fontSize: 12, marginTop: 4 },
-  section: { color: UI.dim, fontSize: 12, fontWeight: '800', letterSpacing: 1, marginTop: 18, marginBottom: 8 },
+  cardTitle: { color: UI.text, fontSize: 19, fontWeight: '800' },
+  cardSub: { color: UI.dim, fontSize: 15, marginTop: 4 },
+  section: { color: UI.dim, fontSize: 14, fontWeight: '800', letterSpacing: 1, marginTop: 18, marginBottom: 8 },
 });
 
 const styles = StyleSheet.create({
   btn: {
     alignSelf: 'stretch',
-    paddingVertical: 14,
+    paddingVertical: 17,
     paddingHorizontal: 12,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: UI.bg2,
     alignItems: 'center',
     marginTop: 8,
   },
-  btnText: { color: UI.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  link: { color: UI.dim, fontSize: 13, textDecorationLine: 'underline' },
-  coins: { color: UI.gold, fontSize: 16, fontWeight: '700' },
+  btnText: { color: UI.text, fontSize: 19, fontWeight: '800', textAlign: 'center' },
+  link: { color: UI.dim, fontSize: 16, textDecorationLine: 'underline' },
+  coins: { color: UI.gold, fontSize: 20, fontWeight: '800' },
   tabHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -95,6 +95,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
-  tabTitle: { color: UI.text, fontSize: 26, fontWeight: '900' },
-  card: { backgroundColor: UI.panel, borderRadius: 16, padding: 14 },
+  tabTitle: { color: UI.text, fontSize: 30, fontWeight: '900' },
+  card: { backgroundColor: UI.panel, borderRadius: 18, padding: 16 },
 });

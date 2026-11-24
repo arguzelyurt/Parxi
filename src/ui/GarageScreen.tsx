@@ -38,7 +38,6 @@ export default function GarageScreen({
     <View style={{ flex: 1 }}>
       <TabHeader title={t('garage.title')} coins={progress.coins} onCoins={onShop} />
       <ScrollView contentContainerStyle={styles.root}>
-        <Text style={styles.sub}>{t('garage.sub')}</Text>
         <View style={styles.summary}>
           <Text style={styles.count}>{t('garage.count', { a: open, b: CAR_MODELS.length })}</Text>
           {next && <Text style={styles.next}>{t('garage.next', { n: next.level })}</Text>}

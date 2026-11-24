@@ -32,6 +32,9 @@ import {
 import { hint } from '../core/solver';
 import { CarModel } from '../core/garage';
 import { Feature } from '../core/features';
+import { MapInfo, mapReward } from '../core/maps';
+
+const BOOSTER_ICON: Record<Booster, string> = { undo: '↶', hint: '💡', crane: '🏗', extraSlot: '＋' };
 import { Booster, boosterName, ECONOMY } from '../core/monetization';
 import { Key, t } from '../i18n';
 import { COLORS, SYMBOLS, UI } from '../game/palette';
@@ -46,7 +49,7 @@ const ROAD = 14; // otoparkın etrafındaki yol
 const EXIT_MS = 230; // aracın otoparktan çıkışı
 const LEAVE_MS = 420; // dolan aracın duraktan ayrılışı
 const BUMP_MS = 260; // önü kapalıyken sarsılma
-const QUEUE_VISIBLE = 12;
+
 
 export interface MonetizationApi {
   /** Ödüllü reklam: true = ödül hak edildi. Destekçi paketinde anında true. */
@@ -78,8 +81,10 @@ interface Props {
   coinsFor(stars: number): number;
   /** Kazanınca bir kez: ödülü üst bileşen verir */
   onWin(r: WinResult): void;
-  /** Bu seviye bitince garaja giren araba (kazanma kartında gösterilir) */
+  /** Bu seviye bitince garaja giren araba (otoparkın altında ve kazanma kartında gösterilir) */
   newCar?: CarModel | null;
+  /** Bu seviye bitince tamamlanan harita (kazanma kartında ödülüyle) */
+  mapDone?: MapInfo | null;
   /** Kazanma kartındaki ana düğme */
   nextLabel: string;
   onNext(): void;
@@ -160,8 +165,9 @@ export default function GameScreen(props: Props) {
 
   // Yerleşim: otopark ekranın kalan yüksekliğine sığar
   const availW = width - 24 - ROAD * 2;
-  const availH = height * 0.5 - ROAD * 2;
-  const cs = Math.max(26, Math.min(58, Math.floor(Math.min(availW / level.w, availH / level.h))));
+  // Otopark ekranın alt kısmına sığar; durak ve yolcular üstte büyük kalsın
+  const availH = height * 0.36 - ROAD * 2;
+  const cs = Math.max(24, Math.min(48, Math.floor(Math.min(availW / level.w, availH / level.h))));
   const lotW = cs * level.w;
   const lotH = cs * level.h;
 
@@ -434,14 +440,15 @@ export default function GameScreen(props: Props) {
   const stars = starsFor(level, s);
   const winResult = (): WinResult => ({ stars, launches: s.taps, parked: s.peak, usedHelp: usedHelp.current });
 
-  const slotW = Math.min(72, Math.floor((width - 24 - 20 - (s.dock.length - 1) * 6) / s.dock.length));
+  const slotW = Math.min(80, Math.floor((width - 24 - 20 - (s.dock.length - 1) * 6) / s.dock.length));
   const dockCarLen = slotW - 8;
   const dockCarT = Math.round(dockCarLen * 0.42);
 
   const infoText = message ?? t('game.idle', { n: passengersLeft(level, s) });
   const vipLeft = vipPatienceLeft(level, s);
   const tutText = tut >= 0 ? t(`tut.${tut}` as Key) : null;
-  const queue = level.queue.slice(s.qi, s.qi + QUEUE_VISIBLE);
+  const queueVisible = Math.max(5, Math.floor((width - 90) / 25));
+  const queue = level.queue.slice(s.qi, s.qi + queueVisible);
   const more = passengersLeft(level, s) - queue.length;
 
   const boosterLabel = (k: Booster) =>
@@ -465,32 +472,32 @@ export default function GameScreen(props: Props) {
           </Pressable>
         </View>
 
-        {/* Yolcu kuyruğu: öndeki en solda */}
-        <View style={[styles.queue, { backgroundColor: theme.panel }]}>
-          {queue.map((c, i) => (
-            <View key={`${s.qi + i}`}>
-              <PersonView color={c} size={i === 0 ? 30 : 22} front={i === 0} vip={level.vip?.qi === s.qi + i} />
-              {i === 0 && vipLeft !== null && (
-                <View style={[styles.vipBadge, vipLeft <= 1 && { backgroundColor: UI.danger }]}>
-                  <Text style={styles.vipBadgeText}>⏳{Math.max(0, vipLeft)}</Text>
-                </View>
-              )}
-            </View>
-          ))}
-          {more > 0 && <Text style={styles.more}>+{more}</Text>}
-        </View>
-
-        {/* Durak */}
+        {/* Durak: üstte bekleyen yolcular (öndeki en solda), altta araç yerleri */}
         <View style={[styles.dock, { backgroundColor: theme.rail, borderColor: theme.railEdge }]}>
-          <Text style={[styles.dockLabel, { color: theme.stop }]}>{t('game.dock')}</Text>
+          <View style={styles.queue}>
+            <Text style={styles.stopSign}>🚏</Text>
+            {queue.map((c, i) => (
+              <View key={`${s.qi + i}`}>
+                <PersonView color={c} size={i === 0 ? 46 : 34} front={i === 0} vip={level.vip?.qi === s.qi + i} />
+                {i === 0 && vipLeft !== null && (
+                  <View style={[styles.vipBadge, vipLeft <= 1 && { backgroundColor: UI.danger }]}>
+                    <Text style={styles.vipBadgeText}>⏳{Math.max(0, vipLeft)}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+            {more > 0 && <Text style={styles.more}>+{more}</Text>}
+          </View>
           <View style={styles.slots}>
             {s.dock.map((p, i) => (
-              <View key={i} style={[styles.slot, { width: slotW, borderColor: theme.stop }]}>
-                {p && (
+              <View key={i} style={[styles.slot, { width: slotW, borderColor: theme.stop }, !!p && { borderStyle: 'solid', backgroundColor: theme.board }]}>
+                {p ? (
                   <View style={{ alignItems: 'center' }}>
                     <VehicleView v={{ ...p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarT} />
-                    <Seats p={p} size={Math.max(5, Math.floor(dockCarLen / 11))} />
+                    <Seats p={p} size={Math.max(7, Math.floor(dockCarLen / 9))} />
                   </View>
+                ) : (
+                  <Text style={[styles.slotP, { color: theme.stop }]}>P</Text>
                 )}
               </View>
             ))}
@@ -503,7 +510,7 @@ export default function GameScreen(props: Props) {
                   style={{
                     position: 'absolute',
                     left: l.slot * (slotW + 6) + 4 + k * k * width,
-                    top: 6,
+                    top: 8,
                     opacity: 1 - k * 0.5,
                   }}
                 >
@@ -614,6 +621,13 @@ export default function GameScreen(props: Props) {
           )}
         </View>
 
+        {props.newCar && (
+          <View style={styles.prize}>
+            <CarArt model={props.newCar} width={110} />
+            <Text style={styles.prizeText}>{t('game.prize')}</Text>
+          </View>
+        )}
+
         <View style={{ flex: 1 }} />
 
         <View style={styles.toolbar}>
@@ -658,6 +672,21 @@ export default function GameScreen(props: Props) {
                   <CarArt model={props.newCar} width={150} />
                 </View>
                 <Text style={styles.overSub}>{t('game.newCarSub', { name: carName(props.newCar.key) })}</Text>
+              </View>
+            )}
+            {props.mapDone && (
+              <View style={[styles.newCar, { borderWidth: 2, borderColor: props.mapDone.color }]}>
+                <Text style={styles.newCarTitle}>
+                  {props.mapDone.icon} {t('game.mapDone')}
+                </Text>
+                <View style={styles.mapChips}>
+                  <Text style={styles.mapChip}>● {mapReward(props.mapDone.index).coins}</Text>
+                  {(Object.keys(mapReward(props.mapDone.index).boosters) as Booster[]).map((k) => (
+                    <Text key={k} style={styles.mapChip}>
+                      {BOOSTER_ICON[k]} {mapReward(props.mapDone!.index).boosters[k]}
+                    </Text>
+                  ))}
+                </View>
               </View>
             )}
             {wonCoins > 0 && <Text style={styles.reward}>{t('game.reward', { n: doubled ? wonCoins * 2 : wonCoins })}</Text>}
@@ -1077,33 +1106,50 @@ function Overlay({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: 12, paddingTop: 8 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  title: { color: UI.text, fontSize: 20, fontWeight: '700' },
+  title: { color: UI.text, fontSize: 22, fontWeight: '900' },
   hard: { color: UI.danger, fontSize: 12, fontWeight: '700', marginTop: 2 },
   headerSide: { minWidth: 80 },
-  headerBtn: { color: UI.dim, fontSize: 17 },
-  coinText: { color: UI.gold, fontWeight: '700', fontSize: 16 },
+  headerBtn: { color: UI.dim, fontSize: 19, fontWeight: '700' },
+  coinText: { color: UI.gold, fontWeight: '800', fontSize: 19 },
   queue: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 4,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minHeight: 48,
+    paddingHorizontal: 2,
+    paddingTop: 14,
+    paddingBottom: 10,
+    minHeight: 72,
   },
-  more: { color: UI.dim, fontSize: 12, fontWeight: '700', marginLeft: 4, marginBottom: 4 },
-  dock: { marginTop: 10, borderRadius: 16, borderWidth: 2, paddingTop: 4, paddingBottom: 8, paddingHorizontal: 10, overflow: 'hidden' },
-  dockLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 2, opacity: 0.8, marginBottom: 4 },
+  stopSign: { fontSize: 30, marginRight: 4 },
+  more: { color: UI.text, fontSize: 16, fontWeight: '900', marginLeft: 4, marginBottom: 6 },
+  dock: { marginTop: 4, borderRadius: 20, borderWidth: 2, paddingBottom: 10, paddingHorizontal: 10, overflow: 'hidden' },
   slots: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
   slot: {
-    height: 64,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    height: 84,
+    borderRadius: 14,
+    borderWidth: 2,
     borderStyle: 'dashed',
     alignItems: 'center',
-    paddingTop: 6,
+    justifyContent: 'center',
   },
-  info: { color: UI.dim, textAlign: 'center', marginVertical: 10, minHeight: 18, fontSize: 13 },
+  slotP: { fontSize: 26, fontWeight: '900', opacity: 0.35 },
+  info: { color: UI.text, textAlign: 'center', marginVertical: 10, minHeight: 20, fontSize: 16, fontWeight: '600' },
+  prize: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 10,
+    marginTop: 10,
+    backgroundColor: UI.panel,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 2,
+    borderColor: UI.gold,
+  },
+  prizeText: { color: UI.gold, fontSize: 16, fontWeight: '900' },
+  mapChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 8 },
+  mapChip: { color: UI.text, fontWeight: '900', fontSize: 16, backgroundColor: UI.bg, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, overflow: 'hidden' },
   vipBadge: { position: 'absolute', top: -10, right: -18, backgroundColor: UI.gold, borderRadius: 8, paddingHorizontal: 4, paddingVertical: 1 },
   vipBadgeText: { color: UI.bg, fontSize: 11, fontWeight: '900' },
   barrierCount: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
@@ -1121,7 +1167,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     minHeight: 44,
   },
-  tutText: { flex: 1, color: UI.text, fontSize: 14, fontWeight: '600' },
+  tutText: { flex: 1, color: UI.text, fontSize: 16, fontWeight: '700' },
   tutBtn: { backgroundColor: UI.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   tutBtnText: { color: UI.bg, fontWeight: '800' },
   introTag: { color: UI.gold, fontWeight: '900', fontSize: 12, letterSpacing: 2 },
@@ -1138,8 +1184,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  toolIcon: { color: UI.text, fontSize: 18 },
-  toolText: { color: UI.text, fontWeight: '600', fontSize: 11, marginTop: 2 },
+  toolIcon: { color: UI.text, fontSize: 22 },
+  toolText: { color: UI.text, fontWeight: '700', fontSize: 12, marginTop: 2 },
   badge: {
     position: 'absolute',
     top: -7,

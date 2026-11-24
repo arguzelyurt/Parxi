@@ -24,7 +24,6 @@ export default function SettingsScreen({ progress, update, onShop, onRestore, pr
         <Card style={{ gap: 16 }}>
           <View>
             <Text style={kit.cardTitle}>{t('settings.speed')}</Text>
-            <Text style={kit.cardSub}>{t('settings.speedSub')}</Text>
             <View style={styles.segment}>
               {SPEEDS.map((sp) => (
                 <Pressable
@@ -39,7 +38,6 @@ export default function SettingsScreen({ progress, update, onShop, onRestore, pr
           </View>
           <Row
             label={t('settings.colorBlind')}
-            sub={t('settings.colorBlindSub')}
             value={progress.colorBlind}
             onChange={(v) => update((p) => ({ ...p, colorBlind: v }))}
           />
@@ -72,7 +70,6 @@ export default function SettingsScreen({ progress, update, onShop, onRestore, pr
 
         <Text style={kit.section}>{t('settings.privacy')}</Text>
         <Card>
-          <Text style={kit.cardSub}>{t('settings.privacyText')}</Text>
           {privacyOptions && <Btn label={t('settings.adPrefs')} onPress={privacyOptions} />}
           {!!PRIVACY_URL && <Btn label={t('settings.policy')} onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} />}
           {!!SUPPORT_EMAIL && <Text style={[kit.cardSub, { marginTop: 10 }]}>{t('settings.support', { email: SUPPORT_EMAIL })}</Text>}

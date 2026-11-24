@@ -49,6 +49,8 @@ import { initFirebase } from './src/services/firebase';
 import GameScreen, { MonetizationApi, WinResult } from './src/ui/GameScreen';
 import ShopSheet from './src/ui/ShopSheet';
 import HomeScreen from './src/ui/HomeScreen';
+import MapScreen from './src/ui/MapScreen';
+import { claimMap, mapCompletedAt, mapOfLevel } from './src/core/maps';
 import GarageScreen from './src/ui/GarageScreen';
 import { carUnlockedAt } from './src/core/garage';
 import { introFor, Feature } from './src/core/features';
@@ -82,7 +84,9 @@ export default function App() {
   useEffect(() => {
     initFirebase();
     loadProgress().then((p) => {
-      const rolled = { ...p, ads: rollDay(p.ads, todayUTC()) };
+      let rolled = { ...p, ads: rollDay(p.ads, todayUTC()) };
+      // Geçilmiş ama ödülü alınmamış haritalar (harita sistemi gelmeden önce oynayanlar için)
+      for (let i = 0; i < mapOfLevel(rolled.level).index; i++) rolled = claimMap(rolled, i);
       setProgress(rolled);
       Ads.initAds(rolled.ads.removeAds).then(() => setAdsTick((t) => t + 1));
       Iap.initIap({
@@ -162,6 +166,11 @@ export default function App() {
         piggy: piggyAfterLevel(p.piggy, p.level),
         stars: { ...p.stars, [level.id]: Math.max(r.stars, p.stars[level.id] ?? 0) },
         ads: onLevelWon(p.ads),
+        // Haritanın son seviyesi: harita ödülü (bir kez)
+        ...(() => {
+          const m = mapCompletedAt(p.level);
+          return m ? claimMap({ coins: p.coins + coinsForLevel(r.stars, !!level.hard), boosters: p.boosters, mapsClaimed: p.mapsClaimed }, m.index) : {};
+        })(),
         missions: applyWin(ensureMissions(p.missions, todayUTC()), {
           stars: r.stars,
           launches: r.launches,
@@ -372,11 +381,15 @@ export default function App() {
                       onPlay={() => setScreen({ kind: 'level' })}
                       onDaily={() => setTab('daily')}
                       onGarage={() => setTab('garage')}
+                      onMap={() => setTab('map')}
                       onShop={() => money.openShop()}
                       missions={ensureMissions(progress.missions, todayUTC())}
                       onClaimMission={claim}
                       onClaimChest={claimChest}
                     />
+                  )}
+                  {tab === 'map' && (
+                    <MapScreen progress={progress} onPlay={() => setScreen({ kind: 'level' })} onShop={() => money.openShop()} />
                   )}
                   {tab === 'daily' && (
                     <DailyScreen
@@ -415,8 +428,7 @@ export default function App() {
                   tab={tab}
                   onTab={setTab}
                   dots={{
-                    daily: progress.daily.lastDoneKey !== today,
-                    home: missionsClaimable,
+                    home: missionsClaimable || progress.daily.lastDoneKey !== today,
                   }}
                 />
               </View>
@@ -433,6 +445,7 @@ export default function App() {
                 coinsFor={(stars) => coinsForLevel(stars, !!level.hard)}
                 onWin={onLevelWin}
                 newCar={carUnlockedAt(n)}
+                mapDone={mapCompletedAt(n)}
                 tutorial={n === 1 && !progress.tutorialDone}
                 onTutorialDone={() => update((p) => ({ ...p, tutorialDone: true }))}
                 intro={introFor(level, progress.seenIntro)}

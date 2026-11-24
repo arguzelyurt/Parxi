@@ -3,14 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { UI } from '../game/palette';
 import { Key, t } from '../i18n';
 
-export type Tab = 'home' | 'daily' | 'market' | 'garage' | 'settings';
+/** daily: alt çubukta yok, ana sayfadan açılır */
+export type Tab = 'home' | 'map' | 'daily' | 'market' | 'garage' | 'settings';
 
 const TABS: { key: Tab; icon: string; label: Key }[] = [
-  { key: 'home', icon: '⌂', label: 'tab.home' },
-  { key: 'daily', icon: '◷', label: 'tab.daily' },
-  { key: 'market', icon: '◈', label: 'tab.market' },
+  { key: 'home', icon: '🏠', label: 'tab.home' },
+  { key: 'map', icon: '🗺️', label: 'tab.map' },
+  { key: 'market', icon: '🛒', label: 'tab.market' },
   { key: 'garage', icon: '🚗', label: 'tab.garage' },
-  { key: 'settings', icon: '⚙', label: 'tab.settings' },
+  { key: 'settings', icon: '⚙️', label: 'tab.settings' },
 ];
 
 /** Alt sekme çubuğu. dots: sekmede bekleyen bir şey varsa (ör. bugünün Günlük Otopark'ı) */
@@ -43,10 +44,10 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   item: { flex: 1, alignItems: 'center', gap: 3 },
-  iconWrap: { width: 44, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  iconOn: { backgroundColor: UI.accent },
-  icon: { color: UI.dim, fontSize: 18, fontWeight: '700' },
-  label: { color: UI.dim, fontSize: 11, fontWeight: '700' },
+  iconWrap: { width: 52, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  iconOn: { backgroundColor: UI.panelHi },
+  icon: { color: UI.dim, fontSize: 22 },
+  label: { color: UI.dim, fontSize: 13, fontWeight: '800' },
   dot: {
     position: 'absolute',
     top: 2,

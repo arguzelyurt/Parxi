@@ -38,33 +38,35 @@ export interface Difficulty {
 }
 
 /** Engellerin ilk geldiği seviyeler (tanıtım kartı bu seviyelerde çıkar) */
-export const FEATURE_LEVEL = { hidden: 16, barrier: 24, lock: 36, vip: 48 } as const;
+export const FEATURE_LEVEL = { hidden: 10, barrier: 16, lock: 24, vip: 32 } as const;
 
 export const isHardLevel = (n: number): boolean => n >= 10 && n % 10 === 0;
 
 export function difficultyFor(n: number): Difficulty {
   const hard = isHardLevel(n);
-  const [w, h] = n === 1 ? [4, 5] : n === 2 ? [5, 5] : n <= 3 ? [5, 6] : n <= 10 ? [6, 7] : n <= 25 ? [6, 8] : n <= 50 ? [7, 9] : [8, 10];
-  const colors = n <= 2 ? 2 : Math.min(7, 3 + Math.floor((n - 3) / 8));
+  // İlk üç seviye öğretici; 4. seviyeden itibaren zorluk hızla artar
+  const [w, h] =
+    n === 1 ? [4, 5] : n === 2 ? [5, 5] : n === 3 ? [5, 6] : n <= 6 ? [6, 7] : n <= 15 ? [6, 8] : n <= 35 ? [7, 9] : [8, 10];
+  const colors = n <= 2 ? 2 : Math.min(7, 3 + Math.floor((n - 3) / 5));
   const mix: Record<Kind, number> = {
     car: 1,
-    bus: n < 4 ? 0 : n < 12 ? 0.35 : 0.45,
-    truck: n < 12 ? 0 : n < 30 ? 0.2 : 0.3,
+    bus: n < 3 ? 0 : n < 10 ? 0.4 : 0.5,
+    truck: n < 8 ? 0 : n < 25 ? 0.22 : 0.32,
   };
   const dockSize = hard ? 4 : 5;
   // Çözümde durakta her zaman en az bir boş yer kalır (oyuncuya nefes payı)
-  const wait = n <= 5 ? 2 : n < 25 || hard ? 3 : 4;
-  const interleave = Math.min(0.75, 0.3 + n * 0.008) + (hard ? 0.1 : 0);
-  const hiddenFrac = n < FEATURE_LEVEL.hidden ? 0 : Math.min(0.5, 0.2 + (n - 16) * 0.006);
-  const barriers = n < FEATURE_LEVEL.barrier ? 0 : n < 40 ? 1 : 2;
-  const locks = n < FEATURE_LEVEL.lock ? 0 : n < 60 ? 1 : 2;
+  const wait = n <= 3 ? 2 : n < 15 || hard ? 3 : 4;
+  const interleave = Math.min(0.8, 0.4 + n * 0.012) + (hard ? 0.1 : 0);
+  const hiddenFrac = n < FEATURE_LEVEL.hidden ? 0 : Math.min(0.5, 0.25 + (n - FEATURE_LEVEL.hidden) * 0.006);
+  const barriers = n < FEATURE_LEVEL.barrier ? 0 : n < 30 ? 1 : 2;
+  const locks = n < FEATURE_LEVEL.lock ? 0 : n < 50 ? 1 : 2;
   // İlk geldiği seviyede kesin olsun ki tanıtım kartı boşa çıkmasın
   const vipChance = n < FEATURE_LEVEL.vip ? 0 : n === FEATURE_LEVEL.vip ? 1 : 0.6;
   return {
     w,
     h,
     colors,
-    fill: n === 1 ? 0.4 : n <= 3 ? 0.55 : 0.78,
+    fill: n === 1 ? 0.4 : n === 2 ? 0.5 : n === 3 ? 0.6 : 0.8,
     mix,
     dockSize,
     wait: Math.min(wait, dockSize - 1),
