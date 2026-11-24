@@ -45,8 +45,9 @@ export const isHardLevel = (n: number): boolean => n >= 10 && n % 10 === 0;
 export function difficultyFor(n: number): Difficulty {
   const hard = isHardLevel(n);
   // İlk üç seviye öğretici; 4. seviyeden itibaren zorluk hızla artar
+  // Otopark ekran genişliğini (durakla aynı) doldurur: geniş ve kalabalık, araçlar küçük
   const [w, h] =
-    n === 1 ? [4, 5] : n === 2 ? [5, 5] : n === 3 ? [5, 6] : n <= 6 ? [6, 7] : n <= 15 ? [6, 8] : n <= 35 ? [7, 9] : [8, 10];
+    n === 1 ? [6, 5] : n === 2 ? [7, 6] : n === 3 ? [8, 7] : n <= 6 ? [9, 8] : n <= 15 ? [9, 9] : n <= 35 ? [10, 10] : [10, 11];
   const colors = n <= 2 ? 2 : Math.min(7, 3 + Math.floor((n - 3) / 5));
   const mix: Record<Kind, number> = {
     car: 1,
@@ -66,7 +67,7 @@ export function difficultyFor(n: number): Difficulty {
     w,
     h,
     colors,
-    fill: n === 1 ? 0.4 : n === 2 ? 0.5 : n === 3 ? 0.6 : 0.8,
+    fill: n === 1 ? 0.3 : n === 2 ? 0.45 : n === 3 ? 0.6 : 0.75,
     mix,
     dockSize,
     wait: Math.min(wait, dockSize - 1),

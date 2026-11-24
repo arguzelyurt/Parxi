@@ -120,8 +120,8 @@ function Preview({ item, index }: { item: MarketItem; index: number }) {
     return (
       <VehicleView
         v={{ kind: 'car', color: SAMPLE[index % SAMPLE.length], dir: 'right' }}
-        length={60}
-        thickness={28}
+        length={64}
+        thickness={32}
         style={carStyleFor(item.id)}
       />
     );

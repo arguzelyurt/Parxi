@@ -1,13 +1,13 @@
-// Renk paleti. İndeksler src/core/pictures.ts ile aynı.
+// Renk paleti: birbirinden kolay ayrılan doygun renkler. scripts/make_vehicles.py ile aynı sıra.
 export const COLORS = [
-  '#FF5A5F', // 0 kırmızı
-  '#FF9F1C', // 1 turuncu
-  '#FFD23F', // 2 sarı
-  '#3BCE7A', // 3 yeşil
-  '#2EC4B6', // 4 turkuaz
-  '#3A86FF', // 5 mavi
-  '#9B5DE5', // 6 mor
-  '#F15BB5', // 7 pembe
+  '#E53935', // 0 kırmızı
+  '#FF7A00', // 1 turuncu
+  '#FFC400', // 2 sarı
+  '#1FAF4B', // 3 yeşil
+  '#00B5D1', // 4 turkuaz
+  '#2962FF', // 5 mavi
+  '#8E2DE2', // 6 mor
+  '#FF4FA8', // 7 pembe
   '#F4F1DE', // 8 krem
   '#A0673F', // 9 kahve
 ];

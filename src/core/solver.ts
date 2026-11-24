@@ -1,6 +1,8 @@
-// Derinlik öncelikli çözücü. Önce öndeki yolcunun rengindeki araçları, sonra rengi kuyrukta
-// en yakın gelen araçları dener; görülen durumları atlar. Üretilen seviyelerde çözümü
-// genelde ilk denemede bulur.
+// Derinlik öncelikli çözücü, iki sırayla dener:
+// 1) Üreticinin çözüm sırası (son yerleştirilen önce çıkar; kimliği büyük olan önce). Oyuncu
+//    bu sıradan çok sapmadıysa çözümü hemen bulur.
+// 2) Renge göre: önce öndeki yolcunun rengindeki araçlar, sonra rengi kuyrukta en yakın gelenler.
+// Görülen durumlar atlanır.
 
 import { capOf, Level, legalMoves, nextNeed, State, stateKey, tap } from './rules';
 
@@ -10,7 +12,16 @@ export interface SolveResult {
   exhausted: boolean;
 }
 
+type Order = 'intended' | 'color';
+
 export function solve(level: Level, start: State, maxNodes = 20000): SolveResult {
+  const a = search(level, start, Math.ceil(maxNodes / 2), 'intended');
+  if (a.moves) return a;
+  const b = search(level, start, Math.floor(maxNodes / 2), 'color');
+  return b.moves ? b : { moves: null, exhausted: a.exhausted || b.exhausted };
+}
+
+function search(level: Level, start: State, maxNodes: number, order: Order): SolveResult {
   const seen = new Set<string>();
   let nodes = 0;
   let exhausted = false;
@@ -34,6 +45,7 @@ export function solve(level: Level, start: State, maxNodes = 20000): SolveResult
       .map((id) => {
         const v = s.lot.find((x) => x.id === id)!;
         const at = need.get(v.color) ?? Infinity;
+        if (order === 'intended') return { id, score: -id };
         return { id, score: at + (waiting.has(v.color) ? 1000 : 0) };
       })
       .sort((a, b) => a.score - b.score);

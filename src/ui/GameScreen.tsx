@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import {
   addDockSlot,
@@ -43,9 +43,10 @@ import { Btn, TextLink } from './kit';
 import { CarStyle, carStyleFor, themeFor } from '../game/skins';
 import { track } from '../services/analytics';
 import CarArt from './CarArt';
+import { HIDDEN_IMAGES, VEHICLE_IMAGES } from '../game/vehicleImages';
 import { carName } from './GarageScreen';
 
-const ROAD = 14; // otoparkın etrafındaki yol
+const ROAD = 8; // otoparkın etrafındaki yol
 const EXIT_MS = 230; // aracın otoparktan çıkışı
 const LEAVE_MS = 420; // dolan aracın duraktan ayrılışı
 const BUMP_MS = 260; // önü kapalıyken sarsılma
@@ -164,10 +165,10 @@ export default function GameScreen(props: Props) {
   }, [level, trackId]);
 
   // Yerleşim: otopark ekranın kalan yüksekliğine sığar
-  const availW = width - 24 - ROAD * 2;
+  const availW = width - 24 - 4 - ROAD * 2;
   // Otopark ekranın alt kısmına sığar; durak ve yolcular üstte büyük kalsın
-  const availH = height * 0.36 - ROAD * 2;
-  const cs = Math.max(24, Math.min(48, Math.floor(Math.min(availW / level.w, availH / level.h))));
+  const availH = height * 0.46 - ROAD * 2;
+  const cs = Math.max(20, Math.min(48, Math.floor(Math.min(availW / level.w, availH / level.h))));
   const lotW = cs * level.w;
   const lotH = cs * level.h;
 
@@ -442,7 +443,6 @@ export default function GameScreen(props: Props) {
 
   const slotW = Math.min(80, Math.floor((width - 24 - 20 - (s.dock.length - 1) * 6) / s.dock.length));
   const dockCarLen = slotW - 8;
-  const dockCarT = Math.round(dockCarLen * 0.42);
 
   const infoText = message ?? t('game.idle', { n: passengersLeft(level, s) });
   const vipLeft = vipPatienceLeft(level, s);
@@ -493,7 +493,7 @@ export default function GameScreen(props: Props) {
               <View key={i} style={[styles.slot, { width: slotW, borderColor: theme.stop }, !!p && { borderStyle: 'solid', backgroundColor: theme.board }]}>
                 {p ? (
                   <View style={{ alignItems: 'center' }}>
-                    <VehicleView v={{ ...p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarT} />
+                    <VehicleView v={{ ...p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarLen / lenOf(p.v)} />
                     <Seats p={p} size={Math.max(7, Math.floor(dockCarLen / 9))} />
                   </View>
                 ) : (
@@ -514,7 +514,7 @@ export default function GameScreen(props: Props) {
                     opacity: 1 - k * 0.5,
                   }}
                 >
-                  <VehicleView v={{ ...l.p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarT} />
+                  <VehicleView v={{ ...l.p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarLen / lenOf(l.p.v)} />
                 </View>
               );
             })}
@@ -541,18 +541,9 @@ export default function GameScreen(props: Props) {
           <Text style={styles.info}>{infoText}</Text>
         )}
 
-        {/* Otopark */}
-        <View
-          style={{
-            width: lotW + ROAD * 2,
-            height: lotH + ROAD * 2,
-            alignSelf: 'center',
-            backgroundColor: theme.rail,
-            borderRadius: 18,
-            borderWidth: 2,
-            borderColor: theme.railEdge,
-          }}
-        >
+        {/* Otopark: durakla aynı genişlikte zemin, ızgara ortada */}
+        <View style={{ alignSelf: 'stretch', alignItems: 'center', backgroundColor: theme.rail, borderRadius: 20, borderWidth: 2, borderColor: theme.railEdge }}>
+        <View style={{ width: lotW + ROAD * 2, height: lotH + ROAD * 2 }}>
           <View style={{ position: 'absolute', left: ROAD, top: ROAD, width: lotW, height: lotH, backgroundColor: theme.board, borderRadius: 8 }}>
             {/* Park yeri çizgileri */}
             {Array.from({ length: level.w * level.h }, (_, i) => (
@@ -619,6 +610,7 @@ export default function GameScreen(props: Props) {
               })()}
             </View>
           )}
+        </View>
         </View>
 
         {props.newCar && (
@@ -751,7 +743,7 @@ function LotVehicle(props: {
   const { v, cs } = props;
   const n = lenOf(v);
   const hor = v.dir === 'left' || v.dir === 'right';
-  const pad = Math.max(2, Math.round(cs * 0.07));
+  const pad = 0; // görselin kendi kenar payı var
   const w = (hor ? n : 1) * cs;
   const h = (hor ? 1 : n) * cs;
   const body = (
@@ -798,96 +790,26 @@ export function VehicleView(props: {
   const style = props.style ?? ctx.car;
   const { length: L, thickness: T, v } = props;
   const hor = v.dir === 'left' || v.dir === 'right';
-  const color = props.hidden ? UI.secret : COLORS[v.color];
-  const dark = shade(color, 0.7);
-  const light = tint(color, 0.35);
-  const glass = '#1C2A40';
-  const r = T * 0.28;
-
-  const inner = (
-    <View
-      style={{
-        width: L,
-        height: T,
-        borderRadius: r,
-        backgroundColor: color,
-        borderWidth: style === 'neon' ? 2 : 1.5,
-        borderColor: props.highlight ? UI.accent : style === 'neon' ? light : dark,
-        overflow: 'hidden',
-        transform: [{ rotate: ROT[v.dir] }],
-      }}
-    >
-      <VehicleDetails kind={v.kind} L={L} T={T} color={color} dark={dark} light={light} glass={glass} style={style} hidden={!!props.hidden} />
+  // Çizimler sağa bakan yatay araç: önce o çizilir, sonra yönüne döndürülür
+  const source = props.hidden
+    ? HIDDEN_IMAGES[v.kind]
+    : (VEHICLE_IMAGES[v.kind][style] ?? VEHICLE_IMAGES[v.kind].klasik)[v.color] ?? VEHICLE_IMAGES[v.kind].klasik[0];
+  return (
+    <View style={{ width: hor ? L : T, height: hor ? T : L, alignItems: 'center', justifyContent: 'center' }}>
+      <Image source={source} style={{ width: L, height: T, transform: [{ rotate: ROT[v.dir] }] }} resizeMode="stretch" />
+      {props.highlight && <View pointerEvents="none" style={[styles.hl, { borderRadius: T * 0.3 }]} />}
       {props.hidden && (
-        <View style={styles.centerAbs}>
-          <Text style={{ color: UI.dim, fontWeight: '900', fontSize: T * 0.5, transform: [{ rotate: `-${ROT[v.dir]}` }] }}>?</Text>
+        <View style={styles.centerAbs} pointerEvents="none">
+          <Text style={{ color: UI.text, fontWeight: '900', fontSize: T * 0.5 }}>?</Text>
         </View>
       )}
       {!props.hidden && ctx.colorBlind && (
-        <View style={styles.centerAbs}>
-          <Text style={{ color: 'rgba(18,20,28,0.8)', fontWeight: '900', fontSize: T * 0.42, transform: [{ rotate: `-${ROT[v.dir]}` }] }}>
-            {SYMBOLS[v.color]}
-          </Text>
+        <View style={styles.centerAbs} pointerEvents="none">
+          <Text style={styles.cbSymbol}>{SYMBOLS[v.color]}</Text>
         </View>
       )}
     </View>
   );
-  return (
-    <View
-      style={[
-        { width: hor ? L : T, height: hor ? T : L, alignItems: 'center', justifyContent: 'center' },
-        props.highlight && styles.glow,
-        style === 'neon' && !props.hidden && { shadowColor: color, shadowOpacity: 0.9, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
-      ]}
-    >
-      {inner}
-    </View>
-  );
-}
-
-/** Sağa bakan yatay aracın detayları (cam, tavan, farlar) */
-function VehicleDetails(p: {
-  kind: Kind;
-  L: number;
-  T: number;
-  color: string;
-  dark: string;
-  light: string;
-  glass: string;
-  style: CarStyle;
-  hidden: boolean;
-}) {
-  const { kind, L, T, glass, style } = p;
-  const lamp = Math.max(3, T * 0.14);
-  const roof = style === 'retro' ? '#F4F1DE' : p.light;
-  const parts: React.ReactNode[] = [];
-  if (kind === 'car') {
-    // arka cam, tavan, ön cam
-    parts.push(<View key="rw" style={[abs, { left: L * 0.14, top: T * 0.16, width: L * 0.1, height: T * 0.68, backgroundColor: glass, borderRadius: 3 }]} />);
-    parts.push(<View key="rf" style={[abs, { left: L * 0.26, top: T * 0.14, width: L * 0.32, height: T * 0.72, backgroundColor: roof, borderRadius: 4, opacity: style === 'retro' ? 1 : 0.55 }]} />);
-    parts.push(<View key="fw" style={[abs, { left: L * 0.6, top: T * 0.12, width: L * 0.14, height: T * 0.76, backgroundColor: glass, borderRadius: 4 }]} />);
-  } else if (kind === 'bus') {
-    parts.push(<View key="rf" style={[abs, { left: L * 0.05, top: T * 0.18, width: L * 0.76, height: T * 0.64, backgroundColor: roof, borderRadius: 4, opacity: style === 'retro' ? 1 : 0.5 }]} />);
-    for (let i = 0; i < 4; i++)
-      parts.push(<View key={`v${i}`} style={[abs, { left: L * (0.1 + i * 0.17), top: T * 0.38, width: L * 0.1, height: T * 0.24, backgroundColor: p.dark, borderRadius: 2, opacity: 0.5 }]} />);
-    parts.push(<View key="fw" style={[abs, { left: L * 0.84, top: T * 0.1, width: L * 0.09, height: T * 0.8, backgroundColor: glass, borderRadius: 3 }]} />);
-  } else {
-    // tır: dorse + kabin
-    parts.push(<View key="tr" style={[abs, { left: L * 0.03, top: T * 0.1, width: L * 0.68, height: T * 0.8, backgroundColor: style === 'retro' ? '#F4F1DE' : p.light, borderRadius: 3, opacity: style === 'retro' ? 1 : 0.6 }]} />);
-    parts.push(<View key="l1" style={[abs, { left: L * 0.08, top: T * 0.33, width: L * 0.58, height: 2, backgroundColor: p.dark, opacity: 0.45 }]} />);
-    parts.push(<View key="l2" style={[abs, { left: L * 0.08, top: T * 0.62, width: L * 0.58, height: 2, backgroundColor: p.dark, opacity: 0.45 }]} />);
-    parts.push(<View key="gap" style={[abs, { left: L * 0.72, top: 0, width: L * 0.03, height: T, backgroundColor: p.dark }]} />);
-    parts.push(<View key="fw" style={[abs, { left: L * 0.86, top: T * 0.12, width: L * 0.08, height: T * 0.76, backgroundColor: glass, borderRadius: 3 }]} />);
-  }
-  if (style === 'parlak')
-    parts.push(<View key="gl" style={[abs, { left: L * 0.08, top: T * 0.08, width: L * 0.5, height: T * 0.14, backgroundColor: '#FFFFFF', opacity: 0.45, borderRadius: T }]} />);
-  if (!p.hidden) {
-    parts.push(<View key="h1" style={[abs, { right: 1, top: T * 0.1, width: lamp * 0.7, height: lamp, backgroundColor: '#FFE066', borderRadius: 2 }]} />);
-    parts.push(<View key="h2" style={[abs, { right: 1, bottom: T * 0.1, width: lamp * 0.7, height: lamp, backgroundColor: '#FFE066', borderRadius: 2 }]} />);
-    parts.push(<View key="t1" style={[abs, { left: 1, top: T * 0.12, width: lamp * 0.5, height: lamp * 0.8, backgroundColor: '#FF4D4D', borderRadius: 2 }]} />);
-    parts.push(<View key="t2" style={[abs, { left: 1, bottom: T * 0.12, width: lamp * 0.5, height: lamp * 0.8, backgroundColor: '#FF4D4D', borderRadius: 2 }]} />);
-  }
-  return <>{parts}</>;
 }
 
 const abs = { position: 'absolute' as const };
@@ -1050,21 +972,10 @@ function IntroPicture({ f }: { f: Feature }) {
   const v = { kind: 'car' as const, color: f === 'lock' ? 7 : 3, dir: 'right' as const };
   return (
     <View>
-      <VehicleView v={v} length={110} thickness={52} hidden={f === 'hidden'} />
+      <VehicleView v={v} length={112} thickness={56} hidden={f === 'hidden'} />
       {f === 'lock' && <LockBadge color={2} size={34} />}
     </View>
   );
-}
-
-function shade(hex: string, f: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v * f));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
-}
-function tint(hex: string, f: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v + (255 - v) * f));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
 /** Alttaki araç kartı (Glugo'daki gibi): simge + ad, sağ üstte hak sayısı ya da coin fiyatı */
@@ -1171,6 +1082,8 @@ const styles = StyleSheet.create({
   tutBtn: { backgroundColor: UI.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   tutBtnText: { color: UI.bg, fontWeight: '800' },
   introTag: { color: UI.gold, fontWeight: '900', fontSize: 12, letterSpacing: 2 },
+  hl: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderWidth: 3, borderColor: UI.accent },
+  cbSymbol: { color: '#FFFFFF', fontWeight: '900', fontSize: 14, textShadowColor: '#000', textShadowRadius: 3 },
   centerAbs: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   glow: { shadowColor: UI.accent, shadowOpacity: 1, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },
   toolbar: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, paddingBottom: 12 },
