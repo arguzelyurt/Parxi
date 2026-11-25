@@ -488,7 +488,7 @@ function BigPreview({ item, width }: { item: MarketItem; width: number }) {
                 <VehicleView v={{ kind: 'car', color: PREVIEW_COLORS[3], dir: 'right' }} length={56} thickness={28} />
               </View>
             </View>
-            <DockVehicle p={{ v: fakeVehicle('car', 7), filled: 3 }} length={96} still />
+            <DockVehicle p={{ v: fakeVehicle('car', 7), filled: 3, at: 0 }} length={96} still />
           </View>
         </SkinCtx.Provider>
       );
@@ -501,7 +501,7 @@ function BigPreview({ item, width }: { item: MarketItem; width: number }) {
                 <PersonView key={c} color={c} size={i === 0 ? 62 : 48} front={i === 0} />
               ))}
             </View>
-            <DockVehicle p={{ v: fakeVehicle('car', 5), filled: 4 }} length={100} still />
+            <DockVehicle p={{ v: fakeVehicle('car', 5), filled: 4, at: 0 }} length={100} still />
           </View>
         </SkinCtx.Provider>
       );
