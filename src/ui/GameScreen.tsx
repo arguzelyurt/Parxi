@@ -444,7 +444,9 @@ export default function GameScreen(props: Props) {
   const winResult = (): WinResult => ({ stars, launches: s.taps, parked: s.peak, usedHelp: usedHelp.current });
 
   const slotW = Math.min(80 * k, Math.floor((width - 24 - 20 - (s.dock.length - 1) * 6) / s.dock.length));
-  const dockCarLen = slotW - 8;
+  // Durakta araçlar dik durur (burnu yukarı): koltuklar seçilebilsin diye daha uzun çizilir
+  const dockCarLen = Math.round(Math.min(100 * k, (slotW - 8) * 1.55));
+  const slotH = dockCarLen + 26 * k;
 
   const infoText = message ?? t('game.idle', { n: passengersLeft(level, s) });
   const vipLeft = vipPatienceLeft(level, s);
@@ -492,7 +494,7 @@ export default function GameScreen(props: Props) {
           </View>
           <View style={styles.slots}>
             {s.dock.map((p, i) => (
-              <View key={i} style={[styles.slot, { width: slotW, height: 84 * k, borderColor: theme.stop }, !!p && { borderStyle: 'solid', backgroundColor: theme.board }]}>
+              <View key={i} style={[styles.slot, { width: slotW, height: slotH, borderColor: theme.stop }, !!p && { borderStyle: 'solid', backgroundColor: theme.board }]}>
                 {p ? (
                   <View style={{ alignItems: 'center' }}>
                     <DockVehicle p={p} length={dockCarLen} />
@@ -513,9 +515,9 @@ export default function GameScreen(props: Props) {
                   pointerEvents="none"
                   style={{
                     position: 'absolute',
-                    left: l.slot * (slotW + 6) + 4 + k * k * width,
-                    top: 8,
-                    opacity: 1 - k * 0.5,
+                    left: l.slot * (slotW + 6) + (slotW - dockCarLen / lenOf(l.p.v) * DOCK_THICKEN[l.p.v.kind]) / 2,
+                    top: 6 - k * k * (slotH + 120),
+                    opacity: 1 - k * 0.6,
                   }}
                 >
                   <DockVehicle p={l.p} length={dockCarLen} still />
@@ -835,7 +837,8 @@ function DockVehicle({ p, length: L, still }: { p: Parked; length: number; still
   const seat = Math.max(4, Math.min(cellW, cellH) * 0.84);
   const filled = new Set(g.order.slice(0, p.filled).map((o) => `${o.col},${o.row}`));
   return (
-    <View style={{ width: L, height: T }}>
+    <View style={{ width: T, height: L }}>
+     <View style={{ position: 'absolute', width: L, height: T, left: (T - L) / 2, top: (L - T) / 2, transform: [{ rotate: '-90deg' }] }}>
       <VehicleView v={{ ...p.v, dir: 'right' }} length={L} thickness={T} />
       <View
         pointerEvents="none"
@@ -876,6 +879,7 @@ function DockVehicle({ p, length: L, still }: { p: Parked; length: number; still
           </View>
         ))}
       </View>
+     </View>
     </View>
   );
 }
