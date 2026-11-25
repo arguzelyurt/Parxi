@@ -90,7 +90,7 @@ test('her kategoride bir ücretsiz varsayılan (garaj hariç), fiyat bantları n
   assert.deepEqual(itemsOf('garage').map((m) => m.id.split(':')[1]).sort(), SPECIAL_CARS.map((c) => c.key).sort());
 });
 
-test('günün fırsatları: aynı gün aynı, gün değişince değişir; sahip olunanlar gelmez; fiyat indirimli', () => {
+test('günün fırsatları: aynı gün aynı, gün değişince değişir; fiyat indirimli', () => {
   const w = wallet(0);
   const a = dailyDeals('2026-11-25', w);
   assert.deepEqual(a, dailyDeals('2026-11-25', w));
@@ -102,8 +102,8 @@ test('günün fırsatları: aynı gün aynı, gün değişince değişir; sahip 
     assert.ok(d.price < d.item.price);
     assert.equal(priceFor(w, d.item, '2026-11-25'), d.price);
   }
-  const owner = { ...w, owned: [a[0].item.id] };
-  assert.ok(!dailyDeals('2026-11-25', owner).some((d) => d.item.id === a[0].item.id) || a[0].item.kind === 'booster');
+  // Bir şey satın alınca günün fırsatları değişmez
+  assert.deepEqual(dailyDeals('2026-11-25', { owned: [a[0].item.id] }), a);
   // Satın alırken fırsat fiyatı uygulanır
   const cos = a.find((d) => d.item.kind !== 'booster')!;
   const r = buyItem(wallet(cos.price), cos.item.id, '2026-11-25');

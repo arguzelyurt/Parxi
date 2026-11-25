@@ -152,7 +152,7 @@ export const tr = {
   // Market
   'market.title': 'Market',
   'market.tab.booster': 'Güçlendirici',
-  'market.tab.theme': 'Tema',
+  'market.tab.theme': 'Temalar',
   'market.tab.car': 'Araç stili',
   'market.using': 'Kullanılıyor',
   'market.use': 'Kullan',
@@ -290,7 +290,7 @@ export const tr = {
   'market.cat.car': 'Kaplamalar',
   'market.categories': 'Kategoriler',
   'market.gift': 'Günlük hediye',
-  'market.giftSub': 'Her gün bedava · {n}. gün',
+  'market.giftSub': '{n}. gün',
   'market.giftTake': 'Al',
   'market.giftDone': 'Yarın yine gel',
   'market.giftGot': 'Hediyen: {what}',

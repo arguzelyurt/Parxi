@@ -179,12 +179,12 @@ export interface Deal {
 const roundPrice = (p: number) => Math.max(10, Math.round(p / 10) * 10);
 
 /**
- * Günün 3 fırsatı: tarihten tohumla seçilir (sunucu gerekmez), sahip olunmayan kozmetiklerden.
- * Bir güçlendirici paketi her zaman listede olabilir; kozmetikler bitince paketler gelir.
+ * Günün 3 fırsatı: tarihten tohumla seçilir (sunucu gerekmez, herkese aynı, gün içinde değişmez):
+ * iki kozmetik + bir güçlendirici paketi. Sahip olunan kozmetik "Senin" olarak görünür.
  */
-export function dailyDeals(dayKey: string, w: Pick<Wallet, 'owned'>): Deal[] {
+export function dailyDeals(dayKey: string, _w?: Pick<Wallet, 'owned'>): Deal[] {
   const rnd = mulberry32(hashSeed(`deals:${dayKey}`));
-  const pool = MARKET.filter((m) => m.kind !== 'booster' && !ownsItem(w, m));
+  const pool = MARKET.filter((m) => m.kind !== 'booster' && !m.free);
   const packs = MARKET.filter((m) => m.kind === 'booster');
   const picked: MarketItem[] = [];
   const take = (list: MarketItem[]) => {

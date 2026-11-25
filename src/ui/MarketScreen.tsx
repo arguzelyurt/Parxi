@@ -109,7 +109,7 @@ export default function MarketScreen(props: Props) {
     track({ name: 'market_view', category: cat ?? 'home' });
   }, [cat]);
 
-  const deals = useMemo(() => dailyDeals(today, wallet), [today, wallet]);
+  const deals = useMemo(() => dailyDeals(today), [today]);
 
   const buy = (item: MarketItem) => {
     const price = priceFor(wallet, item, today);
@@ -157,7 +157,13 @@ export default function MarketScreen(props: Props) {
             </View>
             <View style={styles.deals}>
               {deals.map((d) => (
-                <DealCard key={d.item.id} d={d} affordable={wallet.coins >= d.price} onPress={() => buy(d.item)} />
+                <DealCard
+                  key={d.item.id}
+                  d={d}
+                  owned={d.item.kind !== 'booster' && ownsItem(wallet, d.item)}
+                  affordable={wallet.coins >= d.price}
+                  onPress={() => buy(d.item)}
+                />
               ))}
             </View>
 
@@ -259,18 +265,27 @@ function GiftBanner({ gift, today, onClaim }: { gift: GiftState; today: string; 
   );
 }
 
-function DealCard({ d, affordable, onPress }: { d: Deal; affordable: boolean; onPress(): void }) {
+function DealCard({ d, owned, affordable, onPress }: { d: Deal; owned: boolean; affordable: boolean; onPress(): void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.deal, { borderColor: TIER_COLOR[d.item.rarity] }, pressed && { opacity: 0.85 }]}>
+    <Pressable disabled={owned} onPress={onPress} style={({ pressed }) => [styles.deal, { borderColor: TIER_COLOR[d.item.rarity] }, pressed && { opacity: 0.85 }]}>
       <Text style={styles.pct}>-{d.pct}%</Text>
       <View style={{ height: 52, justifyContent: 'center' }}>
         <ItemThumb item={d.item} size={0.8} />
       </View>
-      <Text style={styles.dealName} numberOfLines={2}>
+      <Text style={styles.dealCat} numberOfLines={1}>
+        {catTitle(d.item.kind)}
+      </Text>
+      <Text style={styles.dealName} numberOfLines={1}>
         {itemName(d.item)}
       </Text>
-      <Text style={styles.oldPrice}>{num(d.item.price)}</Text>
-      <Text style={[styles.dealPrice, !affordable && { color: UI.dim }]}>● {num(d.price)}</Text>
+      {owned ? (
+        <Text style={[styles.dealPrice, { color: UI.accent, marginTop: 14 }]}>✓ {t('market.owned')}</Text>
+      ) : (
+        <>
+          <Text style={styles.oldPrice}>{num(d.item.price)}</Text>
+          <Text style={[styles.dealPrice, !affordable && { color: UI.dim }]}>● {num(d.price)}</Text>
+        </>
+      )}
     </Pressable>
   );
 }
@@ -579,12 +594,13 @@ const styles = StyleSheet.create({
   deals: { flexDirection: 'row', gap: 10 },
   deal: { flex: 1, backgroundColor: UI.panel, borderRadius: 16, borderWidth: 2, alignItems: 'center', padding: 8, paddingTop: 14 },
   pct: { position: 'absolute', top: -10, right: -4, backgroundColor: UI.danger, color: '#fff', fontWeight: '900', fontSize: 13, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, overflow: 'hidden' },
-  dealName: { color: UI.text, fontSize: 13, fontWeight: '800', textAlign: 'center', marginTop: 4, minHeight: 32 },
+  dealCat: { color: UI.dim, fontSize: 11, fontWeight: '800', marginTop: 4 },
+  dealName: { color: UI.text, fontSize: 14, fontWeight: '800', textAlign: 'center' },
   oldPrice: { color: UI.dim, fontSize: 12, textDecorationLine: 'line-through', marginTop: 2 },
   dealPrice: { color: UI.gold, fontSize: 17, fontWeight: '900' },
 
   cats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  cat: { width: '31%', flexGrow: 1, backgroundColor: UI.panel, borderRadius: 16, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 },
+  cat: { width: '31.5%', backgroundColor: UI.panel, borderRadius: 16, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 },
   catIcon: { fontSize: 32 },
   catName: { color: UI.text, fontSize: 14, fontWeight: '800', marginTop: 6 },
   catCount: { color: UI.dim, fontSize: 13, fontWeight: '700', marginTop: 2 },

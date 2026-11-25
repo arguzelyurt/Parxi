@@ -292,7 +292,7 @@ export const en: Record<keyof typeof tr, string> = {
   'market.cat.car': 'Car wraps',
   'market.categories': 'Categories',
   'market.gift': 'Daily gift',
-  'market.giftSub': 'Free every day · day {n}',
+  'market.giftSub': 'Day {n}',
   'market.giftTake': 'Claim',
   'market.giftDone': 'Come back tomorrow',
   'market.giftGot': 'Your gift: {what}',
