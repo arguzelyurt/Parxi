@@ -1,6 +1,12 @@
 # Parxi — Geliştirme Planı: Market, Durak Koltukları, Kaldığı Yerden Devam
 
-Durum: **analiz ve plan; geliştirilmedi.** Sıra önerisi: önce 3 (hata), sonra 2 (görsel), en son 1 (büyük iş).
+Durum: **geliştirildi (25 Kasım 2026).** Üç madde de tamam; market üç fazı birlikte yapıldı.
+
+Uygulamada plandan farklar:
+- Durakta araçlar dik (burnu yukarı) ve daha büyük çiziliyor; otobüs ve tır biraz kalınlaştırıldı ki koltuklar seçilebilsin. Ayrılan araç yukarı doğru çıkar.
+- Kaplamalar tür × renk × kaplama olarak ayrı görsel üretildi (desen aracın kendi renginin açık/koyu tonu); toplam araç görseli ~3,8 MB.
+- Günün fırsatları gün içinde sabit (satın alınca değişmez); sahip olunan fırsat "Senin" görünür.
+- "Dene" düğmesi ve rozet ödülleri yapılmadı; önizleme ekranı aynı işi görüyor.
 
 ---
 

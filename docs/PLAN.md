@@ -102,10 +102,12 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [x] iPad desteği: tablet açık (yalnız dikey, tam ekran), içerik ortada 820 genişliğe kadar, tablette büyük öğeler; iPad mağaza görüntüleri (store/ipad-13*)
 - [ ] iPhone mağaza ekran görüntülerini yeni tasarımla yeniden üret
 
-### Faz 4.6 — Market, durak koltukları, kaldığı yerden devam (planlandı) · ayrıntı: docs/PLAN-MARKET-DURAK.md
-- [ ] Seviye bitince ilerleme hemen kaydedilsin ("Ana menü" sonrası kaldığı yerden devam; coin çoğaltma açığı kapanır)
-- [ ] Durakta saydam tavan: araç kapasitesi kadar koltuk, binen yolcular tepeden görünür, renkler korunur
-- [ ] Market: günlük hediye, günün fırsatları, kategoriler, kaplamalar, yolcu görünümleri, özel garaj arabaları, duraklar, kutlama efektleri, sürpriz kutu
+### Faz 4.6 — Market, durak koltukları, kaldığı yerden devam (tamam) · ayrıntı: docs/PLAN-MARKET-DURAK.md
+- [x] Seviye bitince ilerleme hemen kaydedilir ("Ana menü" sonrası kaldığı yerden devam; aynı seviye ikinci kez ödül vermez)
+- [x] Durakta araçlar dik ve büyük; saydam tavan, kapasite kadar koltuk, binen yolcular tepeden, "2/4" sayacı; renkler korunur
+- [x] Market: günlük hediye (7 günlük seri), günün fırsatları (3 ürün, %20–40, geri sayım), 7 kategori + önizleme, nadirlik çerçeveleri, YENİ/% rozetleri, sürpriz kutu (olasılıklar ekranda), set ödülleri
+- [x] İçerik: 8 yeni kaplama (toplam 12), 7 yolcu görünümü, 5 yeni tema (toplam 10), 4 durak, 4 kutlama efekti, 8 market'e özel garaj arabası, Mega paket
+- [ ] Mağaza ekran görüntüleri yeni market ve durakla yeniden üretilecek
 
 ### Faz 5 — Hesap ve bulut kayıt (ileride) · ayrıntı: docs/HESAP.md
 - [ ] İsteğe bağlı giriş: Apple, Google, e-posta/şifre (Firebase Authentication)
