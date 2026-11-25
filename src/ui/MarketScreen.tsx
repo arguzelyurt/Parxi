@@ -96,6 +96,8 @@ const giftText = (g: Gift) =>
 
 export default function MarketScreen(props: Props) {
   const { wallet, today } = props;
+  const { width: screenW } = useLayout();
+  const catW = Math.floor((screenW - 48 - 20) / 3);
   const [cat, setCat] = useState<Cat | null>(null);
   const [now, setNow] = useState(Date.now());
   const [boxOpen, setBoxOpen] = useState(false);
@@ -173,7 +175,7 @@ export default function MarketScreen(props: Props) {
                 const cnt = collectionCount(wallet, c.kind);
                 const fresh = itemsOf(c.kind).some((m) => m.isNew && !ownsItem(wallet, m));
                 return (
-                  <Pressable key={c.kind} onPress={() => setCat(c.kind)} style={({ pressed }) => [styles.cat, pressed && { opacity: 0.8 }]}>
+                  <Pressable key={c.kind} onPress={() => setCat(c.kind)} style={({ pressed }) => [styles.cat, { width: catW }, pressed && { opacity: 0.8 }]}>
                     {fresh && <Text style={styles.newBadge}>{t('market.new')}</Text>}
                     <Text style={styles.catIcon}>{c.icon}</Text>
                     <Text style={styles.catName} numberOfLines={1}>
@@ -600,7 +602,7 @@ const styles = StyleSheet.create({
   dealPrice: { color: UI.gold, fontSize: 17, fontWeight: '900' },
 
   cats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  cat: { width: '31.5%', backgroundColor: UI.panel, borderRadius: 16, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 },
+  cat: { backgroundColor: UI.panel, borderRadius: 16, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 },
   catIcon: { fontSize: 32 },
   catName: { color: UI.text, fontSize: 14, fontWeight: '800', marginTop: 6 },
   catCount: { color: UI.dim, fontSize: 13, fontWeight: '700', marginTop: 2 },

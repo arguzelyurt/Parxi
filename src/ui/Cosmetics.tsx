@@ -168,31 +168,31 @@ export function WinFx({ kind, width, height }: { kind: string; width: number; he
     anim.start();
     return () => anim.stop();
   }, [a, kind]);
-  const parts = useMemo(() => Array.from({ length: kind === 'havai' ? 3 : 22 }, (_, i) => i), [kind]);
+  const parts = useMemo(() => Array.from({ length: kind === 'havai' ? 5 : 26 }, (_, i) => i), [kind]);
   if (kind === 'sade') return null;
 
   if (kind === 'havai') {
     return (
       <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width, height }}>
         {parts.map((b) => {
-          const cx = width * (0.2 + b * 0.3);
-          const cy = height * (0.18 + seeded(b, 1) * 0.15);
-          const t0 = b * 0.18;
+          const cx = width * [0.2, 0.8, 0.5, 0.22, 0.78][b];
+          const cy = height * [0.12, 0.1, 0.05, 0.8, 0.84][b];
+          const t0 = b * 0.13;
           const p = a.interpolate({ inputRange: [0, t0, Math.min(1, t0 + 0.55), 1], outputRange: [0, 0, 1, 1] });
           const op = a.interpolate({ inputRange: [0, t0, t0 + 0.05, Math.min(1, t0 + 0.6), 1], outputRange: [0, 0, 1, 0, 0] });
-          return Array.from({ length: 12 }, (_, j) => {
-            const ang = (j / 12) * Math.PI * 2;
-            const r = 70 + seeded(b, j) * 20;
+          return Array.from({ length: 16 }, (_, j) => {
+            const ang = (j / 16) * Math.PI * 2;
+            const r = 80 + seeded(b, j) * 40;
             return (
               <Animated.View
                 key={`${b}-${j}`}
                 style={{
                   position: 'absolute',
-                  left: cx - 4,
-                  top: cy - 4,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
+                  left: cx - 5,
+                  top: cy - 5,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
                   backgroundColor: FX_COLORS[(b * 3 + j) % 8],
                   opacity: op,
                   transform: [
