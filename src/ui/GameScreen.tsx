@@ -46,6 +46,7 @@ import { track } from '../services/analytics';
 import CarArt from './CarArt';
 import { HIDDEN_IMAGES, VEHICLE_IMAGES } from '../game/vehicleImages';
 import { carName } from './GarageScreen';
+import { CABIN, DOCK_THICKEN, seatGrid } from '../game/cabin';
 
 const ROAD = 8; // otoparkın etrafındaki yol
 const EXIT_MS = 230; // aracın otoparktan çıkışı
@@ -494,8 +495,10 @@ export default function GameScreen(props: Props) {
               <View key={i} style={[styles.slot, { width: slotW, height: 84 * k, borderColor: theme.stop }, !!p && { borderStyle: 'solid', backgroundColor: theme.board }]}>
                 {p ? (
                   <View style={{ alignItems: 'center' }}>
-                    <VehicleView v={{ ...p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarLen / lenOf(p.v)} />
-                    <Seats p={p} size={Math.max(7, Math.floor(dockCarLen / 9))} />
+                    <DockVehicle p={p} length={dockCarLen} />
+                    <Text style={styles.seatCount}>
+                      {p.filled}/{capOf(p.v)}
+                    </Text>
                   </View>
                 ) : (
                   <Text style={[styles.slotP, { color: theme.stop }]}>P</Text>
@@ -515,7 +518,7 @@ export default function GameScreen(props: Props) {
                     opacity: 1 - k * 0.5,
                   }}
                 >
-                  <VehicleView v={{ ...l.p.v, dir: 'right' }} length={dockCarLen} thickness={dockCarLen / lenOf(l.p.v)} />
+                  <DockVehicle p={l.p} length={dockCarLen} still />
                 </View>
               );
             })}
@@ -815,25 +818,91 @@ export function VehicleView(props: {
 
 const abs = { position: 'absolute' as const };
 
-/** Duraktaki aracın koltukları: dolu olanlar yolcu renginde */
-function Seats({ p, size }: { p: Parked; size: number }) {
+/**
+ * Duraktaki araç: tavanı saydam (koyu cam), içinde kapasite kadar koltuk; binen yolcu koltukta tepeden görünür.
+ * Gövdenin kenarı, burnu ve farları kendi renginde kalır: cam, gövdenin içinde paylı bir pencere.
+ */
+function DockVehicle({ p, length: L, still }: { p: Parked; length: number; still?: boolean }) {
+  const T = (L / lenOf(p.v)) * DOCK_THICKEN[p.v.kind];
+  const box = CABIN[p.v.kind];
   const cap = capOf(p.v);
+  const g = seatGrid(cap);
+  const cw = (box.x1 - box.x0) * L;
+  const ch = (box.y1 - box.y0) * T;
+  const pad = Math.max(2, ch * 0.08);
+  const cellW = (cw - pad * 2) / g.cols;
+  const cellH = (ch - pad * 2) / g.rows;
+  const seat = Math.max(4, Math.min(cellW, cellH) * 0.84);
+  const filled = new Set(g.order.slice(0, p.filled).map((o) => `${o.col},${o.row}`));
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 2, marginTop: 4, maxWidth: size * 5 + 8 }}>
-      {Array.from({ length: cap }, (_, i) => (
-        <View
-          key={i}
-          style={{
-            width: size,
-            height: size,
-            borderRadius: size,
-            backgroundColor: i < p.filled ? COLORS[p.v.color] : 'transparent',
-            borderWidth: 1,
-            borderColor: i < p.filled ? '#FFFFFF' : 'rgba(255,255,255,0.35)',
-          }}
-        />
-      ))}
+    <View style={{ width: L, height: T }}>
+      <VehicleView v={{ ...p.v, dir: 'right' }} length={L} thickness={T} />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: box.x0 * L,
+          top: box.y0 * T,
+          width: cw,
+          height: ch,
+          borderRadius: Math.min(cw, ch) * 0.22,
+          backgroundColor: 'rgba(12,16,28,0.78)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.45)',
+          padding: pad,
+          flexDirection: 'row',
+        }}
+      >
+        {Array.from({ length: g.cols }, (_, c) => (
+          <View key={c} style={{ width: cellW, height: cellH * g.rows }}>
+            {Array.from({ length: g.rows }, (_, r) => (
+              <View key={r} style={{ width: cellW, height: cellH, alignItems: 'center', justifyContent: 'center' }}>
+                {filled.has(`${c},${r}`) ? (
+                  <RiderTop color={p.v.color} size={seat} still={still} />
+                ) : (
+                  <View
+                    style={{
+                      width: seat * 0.82,
+                      height: seat * 0.82,
+                      borderRadius: seat * 0.22,
+                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.22)',
+                    }}
+                  />
+                )}
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
     </View>
+  );
+}
+
+/** Koltuktaki yolcu, tepeden: renkli omuzlar + kafa. Koltuğa otururken küçük bir "pat" animasyonu. */
+export function RiderTop({ color, size, still }: { color: number; size: number; still?: boolean }) {
+  const a = useRef(new Animated.Value(still ? 1 : 0)).current;
+  useEffect(() => {
+    if (still) return;
+    Animated.spring(a, { toValue: 1, friction: 5, tension: 160, useNativeDriver: true }).start();
+  }, [a, still]);
+  const scale = a.interpolate({ inputRange: [0, 1], outputRange: [1.8, 1] });
+  return (
+    <Animated.View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', opacity: a, transform: [{ scale }] }}>
+      <View
+        style={{
+          position: 'absolute',
+          width: size * 0.62,
+          height: size,
+          borderRadius: size * 0.31,
+          backgroundColor: COLORS[color],
+          borderWidth: 1,
+          borderColor: '#FFFFFF',
+        }}
+      />
+      <View style={{ width: size * 0.5, height: size * 0.5, borderRadius: size, backgroundColor: '#FFD7B0', borderWidth: 1, borderColor: 'rgba(0,0,0,0.25)' }} />
+    </Animated.View>
   );
 }
 
@@ -1034,6 +1103,7 @@ const styles = StyleSheet.create({
   },
   stopSign: { fontSize: 30, marginRight: 4 },
   more: { color: UI.text, fontSize: 16, fontWeight: '900', marginLeft: 4, marginBottom: 6 },
+  seatCount: { color: UI.text, fontWeight: '900', fontSize: 13, marginTop: 3, opacity: 0.9 },
   dock: { marginTop: 4, borderRadius: 20, borderWidth: 2, paddingBottom: 10, paddingHorizontal: 10, overflow: 'hidden' },
   slots: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
   slot: {

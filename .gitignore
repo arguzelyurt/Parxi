@@ -50,3 +50,4 @@ _to_delete/
 _sync.tgz
 _sync/
 _web.tgz
+__pycache__/
