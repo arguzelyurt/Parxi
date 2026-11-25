@@ -11,7 +11,12 @@ export type AnalyticsEvent =
   | { name: 'booster_used'; kind: Booster; source: 'inventory' | 'coins' | 'ad' }
   | { name: 'ad_shown'; type: 'interstitial' | 'rewarded'; placement: string }
   | { name: 'iap_offer_shown'; product: string; placement: string }
-  | { name: 'iap_purchase'; product: string };
+  | { name: 'iap_purchase'; product: string }
+  | { name: 'market_view'; category: string }
+  | { name: 'item_preview'; item: string }
+  | { name: 'item_buy'; item: string; price: number; deal: boolean }
+  | { name: 'daily_gift'; streak: number }
+  | { name: 'mystery_box'; item: string };
 
 type Sink = (name: string, params: Record<string, string | number>) => void;
 

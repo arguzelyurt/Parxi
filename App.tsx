@@ -59,7 +59,7 @@ import DailyScreen from './src/ui/DailyScreen';
 import SettingsScreen from './src/ui/SettingsScreen';
 import TabBar, { Tab } from './src/ui/TabBar';
 import { MAX_W } from './src/ui/layout';
-import { buyItem, equipItem, Wallet } from './src/core/market';
+import { buyItem, BuyResult, claimGift, equipItem, openMysteryBox, Wallet } from './src/core/market';
 
 type Screen = { kind: 'tabs' } | { kind: 'level'; n: number } | { kind: 'daily'; key: string };
 
@@ -307,16 +307,45 @@ export default function App() {
     boosters: p.boosters,
     owned: p.owned,
     cosmetics: p.cosmetics,
+    setsClaimed: p.setsClaimed,
   });
 
+  // Market işlemleri sonucu ekrana göstermek için önce hesaplanır, sonra kaydedilir.
   const marketBuy = useCallback(
-    (id: string) =>
-      update((p) => {
-        const r = buyItem(walletOf(p), id);
-        return r.ok ? { ...p, ...r.wallet } : p;
-      }),
+    (id: string): BuyResult => {
+      const p = progressRef.current;
+      if (!p) return { ok: false, reason: 'unknown' };
+      const r = buyItem(walletOf(p), id, todayUTC());
+      if (r.ok) update((cur) => {
+        const again = buyItem(walletOf(cur), id, todayUTC());
+        return again.ok ? { ...cur, ...again.wallet } : cur;
+      });
+      return r;
+    },
     [update],
   );
+
+  const marketGift = useCallback(() => {
+    const p = progressRef.current;
+    if (!p) return null;
+    const r = claimGift(walletOf(p), p.gift, todayUTC());
+    if (!r) return null;
+    update((cur) => {
+      const again = claimGift(walletOf(cur), cur.gift, todayUTC());
+      return again ? { ...cur, ...again.wallet, gift: again.gift } : cur;
+    });
+    return r.got;
+  }, [update]);
+
+  const marketMystery = useCallback(() => {
+    const p = progressRef.current;
+    if (!p) return null;
+    const r = openMysteryBox(walletOf(p));
+    if (!r.ok) return null;
+    // Aynı sonucu kaydet (rastgelelik bir kez)
+    update((cur) => (cur.coins === p.coins && cur.owned.length === p.owned.length ? { ...cur, ...r.wallet } : cur));
+    return { item: r.item, setBonus: r.setBonus };
+  }, [update]);
 
   const marketEquip = useCallback(
     (id: string) => update((p) => ({ ...p, ...equipItem(walletOf(p), id) })),
@@ -413,8 +442,12 @@ export default function App() {
                   {tab === 'market' && (
                     <MarketScreen
                       wallet={walletOf(progress)}
+                      gift={progress.gift}
+                      today={todayUTC()}
                       onBuy={marketBuy}
                       onEquip={marketEquip}
+                      onGift={marketGift}
+                      onMystery={marketMystery}
                       onOpenShop={() => money.openShop()}
                     />
                   )}
@@ -423,6 +456,7 @@ export default function App() {
                       progress={progress}
                       onShop={() => money.openShop()}
                       onFavorite={(key) => update((p) => ({ ...p, favoriteCar: key }))}
+                      onMarket={() => setTab('market')}
                     />
                   )}
                   {tab === 'settings' && (

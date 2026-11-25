@@ -29,7 +29,7 @@ test('market ve araba adlarının çevirisi var', () => {
   setLang('en');
   for (const m of MARKET) {
     assert.ok(!itemName(m).startsWith('item.'), m.id);
-    if (m.desc) assert.ok(!itemDesc(m)!.startsWith('item.'), m.id);
+    if (m.bundle) assert.ok(!itemDesc(m)!.startsWith('item.'), m.id);
   }
   for (const m of CAR_MODELS) assert.ok(!t(`car.${m.key}` as keyof typeof tr).startsWith('car.'), m.key);
   setLang('tr');

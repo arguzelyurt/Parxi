@@ -41,7 +41,8 @@ import { Key, t } from '../i18n';
 import { COLORS, SYMBOLS, UI } from '../game/palette';
 import { Progress, SPEED_MS, todayUTC } from '../game/storage';
 import { Btn, TextLink } from './kit';
-import { CarStyle, carStyleFor, themeFor } from '../game/skins';
+import { CarStyle, carStyleFor, fxFor, RiderSkin, riderFor, stopFor, themeFor } from '../game/skins';
+import { HeadFront, HeadTop, StopBand, WinFx } from './Cosmetics';
 import { track } from '../services/analytics';
 import CarArt from './CarArt';
 import { HIDDEN_IMAGES, VEHICLE_IMAGES } from '../game/vehicleImages';
@@ -103,7 +104,7 @@ interface Props {
 }
 
 /** Araç stili (marketten) + renk körlüğü: her bileşene tek tek geçmemek için */
-const SkinCtx = createContext<{ car: CarStyle; colorBlind: boolean }>({ car: 'klasik', colorBlind: false });
+export const SkinCtx = createContext<{ car: CarStyle; rider: RiderSkin; colorBlind: boolean }>({ car: 'klasik', rider: 'klasik', colorBlind: false });
 
 const haptic = (kind: 'tap' | 'bump' | 'win' | 'stuck' | 'leave') => {
   try {
@@ -132,7 +133,11 @@ export default function GameScreen(props: Props) {
   const { level, heading, trackId, progress, update, money, onNext } = props;
   const colorBlind = progress.colorBlind;
   const theme = themeFor(progress.cosmetics.theme);
-  const skin = useMemo(() => ({ car: carStyleFor(progress.cosmetics.car), colorBlind }), [progress.cosmetics.car, colorBlind]);
+  const skin = useMemo(
+    () => ({ car: carStyleFor(progress.cosmetics.car), rider: riderFor(progress.cosmetics.rider), colorBlind }),
+    [progress.cosmetics.car, progress.cosmetics.rider, colorBlind],
+  );
+  const stopSkin = stopFor(progress.cosmetics.stop);
   const { width, height, k } = useLayout();
   const [s, setS] = useState<State>(() => initialState(level));
   const [history, setHistory] = useState<State[]>([]);
@@ -477,9 +482,10 @@ export default function GameScreen(props: Props) {
         </View>
 
         {/* Durak: üstte bekleyen yolcular (öndeki en solda), altta araç yerleri */}
-        <View style={[styles.dock, { backgroundColor: theme.rail, borderColor: theme.railEdge }]}>
+        <View style={[styles.dock, { backgroundColor: stopSkin.rail ?? theme.rail, borderColor: stopSkin.railEdge ?? theme.railEdge }]}>
+          {stopSkin.band && <StopBand colors={stopSkin.band} />}
           <View style={styles.queue}>
-            <Text style={styles.stopSign}>🚏</Text>
+            <Text style={styles.stopSign}>{stopSkin.sign}</Text>
             {queue.map((c, i) => (
               <View key={`${s.qi + i}`}>
                 <PersonView color={c} size={(i === 0 ? 46 : 34) * k} front={i === 0} vip={level.vip?.qi === s.qi + i} />
@@ -696,6 +702,7 @@ export default function GameScreen(props: Props) {
             {props.nextLabel !== t('common.home') && <TextLink label={t('common.home')} onPress={props.onExit} />}
           </Overlay>
         )}
+        {!busy && s.status === 'won' && <WinFx kind={fxFor(progress.cosmetics.fx)} width={width} height={height} />}
         {!busy && s.status === 'stuck' && (
           <Overlay>
             <Text style={styles.overTitle}>{t('game.stuck')}</Text>
@@ -824,7 +831,7 @@ const abs = { position: 'absolute' as const };
  * Duraktaki araç: tavanı saydam (koyu cam), içinde kapasite kadar koltuk; binen yolcu koltukta tepeden görünür.
  * Gövdenin kenarı, burnu ve farları kendi renginde kalır: cam, gövdenin içinde paylı bir pencere.
  */
-function DockVehicle({ p, length: L, still }: { p: Parked; length: number; still?: boolean }) {
+export function DockVehicle({ p, length: L, still }: { p: Parked; length: number; still?: boolean }) {
   const T = (L / lenOf(p.v)) * DOCK_THICKEN[p.v.kind];
   const box = CABIN[p.v.kind];
   const cap = capOf(p.v);
@@ -886,6 +893,7 @@ function DockVehicle({ p, length: L, still }: { p: Parked; length: number; still
 
 /** Koltuktaki yolcu, tepeden: renkli omuzlar + kafa. Koltuğa otururken küçük bir "pat" animasyonu. */
 export function RiderTop({ color, size, still }: { color: number; size: number; still?: boolean }) {
+  const ctx = useContext(SkinCtx);
   const a = useRef(new Animated.Value(still ? 1 : 0)).current;
   useEffect(() => {
     if (still) return;
@@ -905,7 +913,7 @@ export function RiderTop({ color, size, still }: { color: number; size: number; 
           borderColor: '#FFFFFF',
         }}
       />
-      <View style={{ width: size * 0.5, height: size * 0.5, borderRadius: size, backgroundColor: '#FFD7B0', borderWidth: 1, borderColor: 'rgba(0,0,0,0.25)' }} />
+      <HeadTop skin={ctx.rider} s={size * 0.5} />
     </Animated.View>
   );
 }
@@ -921,7 +929,7 @@ export function PersonView({ color, size, front, vip }: { color: number; size: n
           👑
         </Text>
       )}
-      <View style={{ width: head, height: head, borderRadius: 3, backgroundColor: '#FFD7B0', borderWidth: front ? 1.5 : 0, borderColor: '#FFFFFF' }} />
+      <HeadFront skin={ctx.rider} s={head} front={front} />
       <View
         style={{
           marginTop: 1,

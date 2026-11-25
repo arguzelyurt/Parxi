@@ -4,7 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AdState, Booster, initialAdState } from '../core/monetization';
 import type { MissionState } from '../core/missions';
-import { DEFAULT_COSMETICS } from '../core/market';
+import { Cosmetics, DEFAULT_COSMETICS, GiftState } from '../core/market';
 import { LangSetting, t } from '../i18n';
 import { hasNativeModule } from '../services/native';
 
@@ -29,7 +29,11 @@ export interface Progress {
   lang: LangSetting;
   /** Marketten alınan kozmetikler ve kullanılanlar */
   owned: string[];
-  cosmetics: { theme: string; car: string };
+  cosmetics: Cosmetics;
+  /** Ödülü alınmış koleksiyon setleri (market kategorileri) */
+  setsClaimed: string[];
+  /** Market günlük hediyesi */
+  gift: GiftState;
   /** Garajda seçilen, ana sayfada duran araba */
   favoriteCar: string;
   /** 1. seviyedeki öğretici bitti mi */
@@ -76,6 +80,8 @@ export const defaultProgress = (): Progress => ({
   lang: 'auto',
   owned: [],
   cosmetics: { ...DEFAULT_COSMETICS },
+  setsClaimed: [],
+  gift: { day: null, streak: 0 },
   favoriteCar: 'minik',
   tutorialDone: false,
   seenIntro: [],
@@ -143,6 +149,8 @@ export async function loadProgress(): Promise<Progress> {
     p.cosmetics = { ...d.cosmetics, ...saved.cosmetics };
     if (!Array.isArray(p.seenIntro)) p.seenIntro = [];
     if (!Array.isArray(p.mapsClaimed)) p.mapsClaimed = [];
+    if (!Array.isArray(p.setsClaimed)) p.setsClaimed = [];
+    p.gift = { ...d.gift, ...saved.gift };
     if (!(p.speed in SPEED_MS)) p.speed = 'normal';
     if (!['auto', 'tr', 'en'].includes(p.lang)) p.lang = 'auto';
     p.ads = { ...initialAdState(todayUTC()), ...saved.ads, firstSession: !saved.ads };

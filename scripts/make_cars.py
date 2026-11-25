@@ -346,11 +346,83 @@ MODELS = {
  'altin':   lambda c: sports(c,'#F2C94C','#FFFFFF','altin'),
 }
 
+# ---------- Yalnız market'te satılan özel arabalar ----------
+def bolt(c, x, y, s, col):
+    fill(c, poly([(x, y-s), (x-s*.55, y+s*.1), (x-s*.05, y+s*.1), (x-s*.25, y+s), (x+s*.55, y-s*.15), (x+s*.05, y-s*.15), (x+s*.25, y-s)]), col)
+
+def elektrik(c):
+    col, acc = '#2EC4B6', '#B8F35A'
+    def over(c):
+        bolt(c, 300, 186, 22, acc)
+        rect(c, 84, 182, 96, 204, '#1A1D26', 3); line(c, [(90, 204), (70, 236), (40, 240)], '#1A1D26', 5)  # şarj kablosu
+    prof=[(92,240),(86,190),(100,128),(160,96),(318,92),(392,140),(488,152),(524,176),(528,240)]
+    win=[[(124,128),(166,106),(240,102),(240,144),(118,146)],[(250,102),(312,100),(372,142),(250,144)]]
+    def L(c):
+        lamp(c,508,170,20,16,'#E6FBFF'); lamp(c,88,160,14,22,'#FF4D4D')
+        bumper(c,92,170,226,'#F4F7FB'); bumper(c,440,526,226,'#F4F7FB'); door(c,246,150,226,col)
+        rect(c,96,206,524,214,acc,3); shine(c,[(110,170),(380,160),(500,162)])
+    car_generic(c,col,prof,win,[(240,100,10,146)],[170,440],37,lights=L,extra={'over':over},rim='#E8ECF2')
+
+def safari(c):
+    jeep(c, '#D9B67A', '#5B7F3A')
+    for k in range(5): rect(c, 150+k*60, 72, 180+k*60, 84, '#5B3A1E', 3)  # tavan bagajı
+    rect(c, 140, 66, 430, 72, '#3B4252', 2)
+    for x in (120, 250, 380): fill(c, poly([(x,176),(x+30,168),(x+60,176),(x+30,184)]), '#5B3A1E', alpha=170)  # zebra lekeleri
+
+def cop(c):
+    col='#3BAA5C'
+    prof=[(30,240),(30,92),(430,92),(430,110),(470,110),(560,150),(604,168),(608,240)]
+    win=[[(478,118),(520,118),(570,160),(478,160)]]
+    def L(c):
+        for k in range(7): rect(c,46+k*54,104,80+k*54,200,mix(col,.2,'#000000'),5)
+        rect(c,30,206,608,214,'#F4F1DE',2); lamp(c,586,176,18,16,'#FFE066'); lamp(c,30,176,12,22,'#FF4D4D')
+        rect(c,440,74,466,92,'#FF9F1C',5); bumper(c,32,140,226,'#3B4252'); bumper(c,500,608,226,'#3B4252')
+        fill(c, skia.Path().addCircle(240,150,26), '#F4F1DE'); fill(c, poly([(228,160),(240,134),(252,160)]), col)  # geri dönüşüm işareti
+    car_generic(c,col,prof,win,[],[120,300,520],40,lights=L,corner=14)
+
+def vincli(c):
+    pickup(c, '#FFB020', '#1A1D26')
+    rect(c, 150, 120, 176, 168, '#3B4252', 4)  # vinç gövdesi
+    line(c, [(162, 124), (60, 40)], '#FFD23F', 14); line(c, [(162, 124), (60, 40)], '#1A1D26', 3)
+    line(c, [(62, 44), (62, 120)], '#1A1D26', 3); rect(c, 52, 118, 72, 130, '#1A1D26', 3)
+    for k in range(5): rect(c, 40+k*52, 172, 66+k*52, 180, '#1A1D26' if k%2 else '#FFD23F', 2)
+
+def pizza(c):
+    hatch(c, '#E8453C', '#FFFFFF')
+    rect(c, 150, 70, 300, 96, '#FFFFFF', 6); rect(c, 156, 74, 294, 92, '#E8453C', 4)
+    fill(c, poly([(196,92),(226,76),(256,92)]), '#FFD23F'); fill(c, skia.Path().addCircle(222,86,3), '#E8453C'); fill(c, skia.Path().addCircle(236,88,3), '#3BAA5C')
+    rect(c, 250, 188, 330, 214, '#FFFFFF', 8); rect(c, 258, 194, 322, 208, '#3BAA5C', 4)
+
+def altin_taksi(c):
+    sedan(c, '#F2C94C', '#1A1D26', 'taksi')
+    for (sx,sy,s) in [(130,140,8),(470,132,7),(380,72,6)]:
+        fill(c, poly([(sx,sy-s*2),(sx+s*.5,sy-s*.5),(sx+s*2,sy),(sx+s*.5,sy+s*.5),(sx,sy+s*2),(sx-s*.5,sy+s*.5),(sx-s*2,sy),(sx-s*.5,sy-s*.5)]), '#FFFFFF')
+
+def ralli(c):
+    sports(c, '#2962FF', '#FFFFFF', 'spor')
+    rect(c, 60, 176, 600, 188, '#FFFFFF', 4); rect(c, 60, 192, 600, 198, '#E8453C', 3)
+    fill(c, skia.Path().addCircle(320, 176, 26), '#FFFFFF'); fill(c, skia.Path().addCircle(320, 176, 20), '#1A1D26')
+    for k in range(4): rect(c, 300+k*20, 94, 316+k*20, 104, '#FFE066', 4)  # tavan lambaları
+
+def uzay(c):
+    beetle(c, '#B8C0CC', '#56CCF2')
+    p = skia.Paint(AntiAlias=True, Color=hx('#9FE7FF', 120)); c.drawCircle(265, 96, 80, p)
+    p2 = skia.Paint(AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=4, Color=hx('#E6FBFF', 220)); c.drawCircle(265, 96, 80, p2)
+    line(c, [(265, 16), (265, -2)], '#3B4252', 4); fill(c, skia.Path().addCircle(265, -2, 8), '#FF4FA8')
+    for x in (130, 400): fill(c, skia.Path().addCircle(x, 214, 9), '#56CCF2')
+    fl = poly([(80,206),(30,196),(56,212),(20,226),(80,222)]); fill(c, fl, '#56CCF2', alpha=200)
+
+SPECIAL = {
+ 'elektrik': elektrik, 'safari': safari, 'cop': cop, 'vincli': vincli,
+ 'pizza': pizza, 'altintaksi': altin_taksi, 'ralli': ralli, 'uzay': uzay,
+}
+MODELS.update(SPECIAL)
+
 def render(key, path, scale=1.0):
     s = skia.Surface(int(W*scale), int(H*scale))
     c = s.getCanvas(); c.clear(skia.ColorTRANSPARENT); c.scale(scale, scale)
     # sığdırma: tüm çizimler 0..640 arasında; biraz pay bırak
-    if key == 'roket':
+    if key in ('roket', 'uzay', 'vincli'):
         c.translate(W*0.08, 0); c.scale(0.9, 0.9); c.translate(0, H*0.1)
     else:
         c.translate(W*0.02, 0); c.scale(0.96, 1)
@@ -358,7 +430,11 @@ def render(key, path, scale=1.0):
     s.makeImageSnapshot().save(path, skia.kPNG)
 
 if __name__ == '__main__':
-    import os
+    import os, sys
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    out = os.path.join(ROOT, 'assets', 'cars')
+    only = sys.argv[1:] or list(MODELS)
+    for k in only: render(k, os.path.join(out, f'{k}.png'), 0.8)
     os.makedirs('/home/claude/art/out', exist_ok=True)
     for k in MODELS: render(k, f'/home/claude/art/out/{k}.png')
     from PIL import Image

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLayout } from './layout';
-import { CAR_MODELS, CarModel, nextCar } from '../core/garage';
+import { CAR_MODELS, CarModel, nextCar, SPECIAL_CARS } from '../core/garage';
+import { itemById } from '../core/market';
 import { UI } from '../game/palette';
 import { Progress } from '../game/storage';
 import { Key, t } from '../i18n';
@@ -13,7 +14,10 @@ export const carName = (key: string): string => t(`car.${key}` as Key);
 
 export type Tier = 'common' | 'rare' | 'epic' | 'legend';
 /** Açıldığı seviyeye göre nadirlik: güzel modeller ileride */
-export const tierOf = (m: CarModel): Tier => (m.level < 30 ? 'common' : m.level < 100 ? 'rare' : m.level < 200 ? 'epic' : 'legend');
+export const tierOf = (m: CarModel): Tier =>
+  m.special
+    ? (itemById(`garage:${m.key}`)?.rarity ?? 'rare')
+    : m.level < 30 ? 'common' : m.level < 100 ? 'rare' : m.level < 200 ? 'epic' : 'legend';
 export const TIER_COLOR: Record<Tier, string> = { common: UI.dim, rare: UI.accent, epic: '#B98CFF', legend: UI.gold };
 
 /** Bitirilen en yüksek seviye */
@@ -23,10 +27,13 @@ export default function GarageScreen({
   progress,
   onShop,
   onFavorite,
+  onMarket,
 }: {
   progress: Progress;
   onShop(): void;
   onFavorite(key: string): void;
+  /** Özel arabayı almak için markete git */
+  onMarket(): void;
 }) {
   const { width, tablet } = useLayout();
   const cols = tablet ? 3 : 2;
@@ -35,6 +42,31 @@ export default function GarageScreen({
   const open = CAR_MODELS.filter((m) => m.level <= Math.max(1, done)).length;
   const next = nextCar(done);
   const [open_, setOpen] = useState<CarModel | null>(null);
+  const isUnlocked = (m: CarModel) => (m.special ? progress.owned.includes(`garage:${m.key}`) : m.level <= Math.max(1, done));
+  const specialOwned = SPECIAL_CARS.filter(isUnlocked).length;
+  const renderTile = (m: CarModel) => {
+    const unlocked = isUnlocked(m);
+    const fav = progress.favoriteCar === m.key;
+    const price = m.special ? itemById(`garage:${m.key}`)?.price : 0;
+    return (
+      <Pressable key={m.key} onPress={() => setOpen(m)} style={[styles.tile, { width: tile }, fav && styles.tileFav]}>
+        <View style={{ height: tile * 0.5, justifyContent: 'center' }}>
+          <CarArt model={m} width={tile - 28} silhouette={!unlocked && !m.special} />
+        </View>
+        <Text style={[styles.name, !unlocked && { color: UI.dim }]}>{unlocked || m.special ? carName(m.key) : '???'}</Text>
+        <Text style={[styles.meta, fav && { color: UI.accent }]}>
+          {!unlocked
+            ? m.special
+              ? `🛒 ● ${price}`
+              : '🔒 ' + t('garage.locked', { n: m.level })
+            : fav
+              ? t('garage.favorite')
+              : ' '}
+        </Text>
+        <Text style={[styles.tier, { color: TIER_COLOR[tierOf(m)] }]}>{t(`garage.tier.${tierOf(m)}` as Key)}</Text>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -44,35 +76,21 @@ export default function GarageScreen({
           <Text style={styles.count}>{t('garage.count', { a: open, b: CAR_MODELS.length })}</Text>
           {next && <Text style={styles.next}>{t('garage.next', { n: next.level })}</Text>}
         </View>
-        <View style={styles.grid}>
-          {CAR_MODELS.map((m) => {
-            const unlocked = m.level <= Math.max(1, done);
-            const fav = progress.favoriteCar === m.key;
-            return (
-              <Pressable
-                key={m.key}
-                onPress={() => setOpen(m)}
-                style={[styles.tile, { width: tile }, fav && styles.tileFav]}
-              >
-                <View style={{ height: tile * 0.5, justifyContent: 'center' }}>
-                  <CarArt model={m} width={tile - 28} silhouette={!unlocked} />
-                </View>
-                <Text style={[styles.name, !unlocked && { color: UI.dim }]}>{unlocked ? carName(m.key) : '???'}</Text>
-                <Text style={[styles.meta, fav && { color: UI.accent }]}>
-                  {!unlocked ? '🔒 ' + t('garage.locked', { n: m.level }) : fav ? t('garage.favorite') : ' '}
-                </Text>
-                <Text style={[styles.tier, { color: TIER_COLOR[tierOf(m)] }]}>{t(`garage.tier.${tierOf(m)}` as Key)}</Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.grid}>{CAR_MODELS.map(renderTile)}</View>
+        <View style={[styles.summary, { marginTop: 10 }]}>
+          <Text style={styles.count}>{t('garage.special')}</Text>
+          <Text style={styles.next}>
+            {specialOwned}/{SPECIAL_CARS.length}
+          </Text>
         </View>
+        <View style={styles.grid}>{SPECIAL_CARS.map(renderTile)}</View>
         <Text style={styles.more}>{t('garage.more')}</Text>
       </ScrollView>
       <Sheet visible={!!open_} onClose={() => setOpen(null)}>
         {open_ && (
           <CarDetail
             m={open_}
-            unlocked={open_.level <= Math.max(1, done)}
+            unlocked={isUnlocked(open_)}
             fav={progress.favoriteCar === open_.key}
             left={open_.level - done}
             width={width - 96}
@@ -81,6 +99,10 @@ export default function GarageScreen({
               setOpen(null);
             }}
             onClose={() => setOpen(null)}
+            onMarket={() => {
+              setOpen(null);
+              onMarket();
+            }}
           />
         )}
       </Sheet>
@@ -96,17 +118,22 @@ function CarDetail(p: {
   width: number;
   onFavorite(): void;
   onClose(): void;
+  onMarket(): void;
 }) {
   const tier = tierOf(p.m);
   return (
     <>
       <Text style={[styles.tier, { color: TIER_COLOR[tier], fontSize: 13 }]}>{t(`garage.tier.${tier}` as Key)}</Text>
-      <Text style={styles.detailName}>{p.unlocked ? carName(p.m.key) : '???'}</Text>
+      <Text style={styles.detailName}>{p.unlocked || p.m.special ? carName(p.m.key) : '???'}</Text>
       <View style={{ marginVertical: 18 }}>
-        <CarArt model={p.m} width={p.width} silhouette={!p.unlocked} />
+        <CarArt model={p.m} width={p.width} silhouette={!p.unlocked && !p.m.special} />
       </View>
       <Text style={styles.detailSub}>
-        {p.unlocked
+        {p.m.special
+          ? p.unlocked
+            ? t('garage.specialOwned')
+            : t('garage.specialSub')
+          : p.unlocked
           ? p.m.level <= 1
             ? t('garage.starter')
             : t('garage.unlockedAt', { n: p.m.level })
@@ -114,6 +141,7 @@ function CarDetail(p: {
       </Text>
       <View style={{ height: 8 }} />
       {p.unlocked && !p.fav && <Btn label={t('garage.setFavorite')} primary onPress={p.onFavorite} />}
+      {!p.unlocked && p.m.special && <Btn label={t('garage.toMarket')} primary onPress={p.onMarket} />}
       {p.unlocked && p.fav && <Text style={[styles.detailSub, { color: UI.accent, marginVertical: 8 }]}>{t('garage.favorite')}</Text>}
       <Btn label={t('garage.close')} onPress={p.onClose} />
     </>

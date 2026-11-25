@@ -12,6 +12,9 @@ COLORS = ['#E53935', '#FF7A00', '#FFC400', '#1FAF4B', '#00B5D1', '#2962FF', '#8E
 HIDDEN = '#3A5274'
 KINDS = {'car': 2, 'bus': 3, 'truck': 4}
 STYLES = ['klasik', 'parlak', 'retro', 'neon']
+# Market kaplamaları: aracın kendi renginin açık/koyu tonlarıyla desen (renk asla değişmez)
+WRAPS = ['yaris', 'taksi', 'kamuflaj', 'alev', 'karbon', 'ahsap', 'puantiye', 'altin']
+ALL_STYLES = STYLES + WRAPS
 
 def rgb(h): h = h.lstrip('#'); return [int(h[i:i+2], 16) for i in (0, 2, 4)]
 def hexc(c): return '#%02x%02x%02x' % tuple(max(0, min(255, int(v))) for v in c)
@@ -57,6 +60,66 @@ def wheels(cv, xs, y0, y1, h):
         cv.drawRRect(rrect(x - h * 0.13, y0 - h * 0.04, x + h * 0.13, y0 + h * 0.1, 4), paint('#14161E'))
         cv.drawRRect(rrect(x - h * 0.13, y1 - h * 0.1, x + h * 0.13, y1 + h * 0.04, 4), paint('#14161E'))
 
+def wrap(cv, st, path, base, x0, y0, x1, y1, h):
+    """Kaplama deseni, gövde yoluna kırpılmış; yalnız tabanın açık/koyu tonları."""
+    if st not in WRAPS:
+        return
+    light, dark = mix(base, .62), mix(base, .45, '#000000')
+    cv.save(); cv.clipPath(path, skia.ClipOp.kIntersect, True)
+    L = x1 - x0; cy = (y0 + y1) / 2
+    if st == 'yaris':
+        for off in (-h * 0.13, h * 0.05):
+            cv.drawRect(skia.Rect(x0, cy + off, x1, cy + off + h * 0.08), paint(light))
+    elif st == 'taksi':
+        sq = h * 0.11; n = int(L / sq) + 1
+        for row in (0, 1):
+            for k in range(n):
+                cv.drawRect(skia.Rect(x0 + k * sq, cy - sq + row * sq, x0 + (k + 1) * sq, cy + row * sq), paint(dark if (k + row) % 2 else light))
+    elif st == 'kamuflaj':
+        import random
+        r = random.Random(7 + int(L))
+        for k in range(int(L / h * 7)):
+            px, py = x0 + r.random() * L, y0 + r.random() * h
+            rad = h * (0.08 + r.random() * 0.1)
+            cv.drawOval(skia.Rect(px - rad * 1.5, py - rad, px + rad * 1.5, py + rad), paint(dark if k % 2 else light, 230))
+    elif st == 'alev':
+        for side in (0, 1):
+            ys = y0 if side == 0 else y1
+            sgn = 1 if side == 0 else -1
+            p = skia.Path(); p.moveTo(x1, ys)
+            tongues = max(3, int(L / h * 2))
+            for k in range(tongues + 1):
+                xx = x1 - (L * 0.75) * k / tongues
+                depth = h * (0.38 - 0.25 * k / tongues)
+                p.lineTo(xx + h * 0.08, ys + sgn * depth); p.lineTo(xx - h * 0.04, ys + sgn * depth * 0.35)
+            p.lineTo(x1 - L * 0.8, ys); p.close()
+            cv.drawPath(p, paint(light))
+    elif st == 'karbon':
+        step = h * 0.09
+        k = -h
+        while k < L + h:
+            cv.drawLine(x0 + k, y0, x0 + k + h, y1, paint(dark, 150, stroke=h * 0.03))
+            cv.drawLine(x0 + k + h, y0, x0 + k, y1, paint(dark, 90, stroke=h * 0.02))
+            k += step
+    elif st == 'ahsap':
+        for yy0 in (y0, y1 - h * 0.24):
+            cv.drawRect(skia.Rect(x0, yy0, x1, yy0 + h * 0.24), paint(dark))
+            for g in range(3):
+                gy = yy0 + h * (0.05 + g * 0.07)
+                cv.drawLine(x0, gy, x1, gy + h * 0.02, paint(mix(base, .65, '#000000'), 160, stroke=1.5))
+    elif st == 'puantiye':
+        rad = h * 0.07; gap = h * 0.26
+        row = 0; yy = y0 + gap / 2
+        while yy < y1:
+            xx = x0 + (gap / 2 if row % 2 else 0) + gap / 3
+            while xx < x1:
+                cv.drawCircle(xx, yy, rad, paint(light)); xx += gap
+            yy += gap * 0.75; row += 1
+    elif st == 'altin':
+        for off in (h * 0.09, h * 0.91):
+            cv.drawLine(x0, y0 + off * 0 + (y1 - y0) * (0.09 if off < h / 2 else 0.91), x1, y0 + (y1 - y0) * (0.09 if off < h / 2 else 0.91), paint('#F2C94C', stroke=h * 0.05))
+    cv.restore()
+
 def draw(kind, c, style, hidden=False):
     n = KINDS[kind]
     W, H = CELL * n, CELL
@@ -72,6 +135,7 @@ def draw(kind, c, style, hidden=False):
         wheels(cv, [x0 + (x1 - x0) * 0.22, x0 + (x1 - x0) * 0.76], y0, y1, h)
         path = body_path(x0, y0, x1, y1, h * 0.22, h * 0.42)
         cv.drawPath(path, paint(shader=body_shader(base, y0, y1, st)))
+        wrap(cv, st, path, base, x0, y0, x1, y1, h)
         L = x1 - x0
         # kaput çizgileri (önde)
         cv.drawLine(x0 + L * 0.8, y0 + h * 0.35, x1 - h * 0.18, y0 + h * 0.38, paint(mix(base, .35, '#000000'), 120, stroke=2))
@@ -80,6 +144,7 @@ def draw(kind, c, style, hidden=False):
         cv.drawRRect(rrect(x0 + L * 0.13, y0 + h * 0.2, x0 + L * 0.25, y1 - h * 0.2, h * 0.1), paint(shader=glass_shader(y0, y1)))
         roof = '#F4F1DE' if st == 'retro' else mix(base, .22)
         cv.drawRRect(rrect(x0 + L * 0.25, y0 + h * 0.16, x0 + L * 0.55, y1 - h * 0.16, h * 0.14), paint(roof))
+        wrap(cv, st, skia.Path().addRRect(rrect(x0 + L * 0.25, y0 + h * 0.16, x0 + L * 0.55, y1 - h * 0.16, h * 0.14)), base, x0, y0, x1, y1, h)
         win = skia.Path(); win.moveTo(x0 + L * 0.57, y0 + h * 0.18); win.lineTo(x0 + L * 0.7, y0 + h * 0.1)
         win.lineTo(x0 + L * 0.7, y1 - h * 0.1); win.lineTo(x0 + L * 0.57, y1 - h * 0.18); win.close()
         p = paint(shader=glass_shader(y0, y1)); p.setPathEffect(skia.CornerPathEffect.Make(h * 0.08)); cv.drawPath(win, p)
@@ -94,9 +159,11 @@ def draw(kind, c, style, hidden=False):
         wheels(cv, [x0 + (x1 - x0) * 0.16, x0 + (x1 - x0) * 0.82], y0, y1, h)
         path = body_path(x0, y0, x1, y1, h * 0.16, h * 0.3)
         cv.drawPath(path, paint(shader=body_shader(base, y0, y1, st)))
+        wrap(cv, st, path, base, x0, y0, x1, y1, h)
         L = x1 - x0
         roof = '#F4F1DE' if st == 'retro' else mix(base, .28)
         cv.drawRRect(rrect(x0 + L * 0.04, y0 + h * 0.14, x0 + L * 0.85, y1 - h * 0.14, h * 0.12), paint(roof))
+        wrap(cv, st, skia.Path().addRRect(rrect(x0 + L * 0.04, y0 + h * 0.14, x0 + L * 0.85, y1 - h * 0.14, h * 0.12)), base, x0, y0, x1, y1, h)
         # yan camlar (iki kenarda şerit)
         for yy in (y0 + h * 0.04, y1 - h * 0.14):
             cv.drawRRect(rrect(x0 + L * 0.06, yy, x0 + L * 0.84, yy + h * 0.1, 3), paint(shader=glass_shader(y0, y1)))
@@ -112,6 +179,7 @@ def draw(kind, c, style, hidden=False):
         cab_x = x0 + L * 0.74
         trailer = body_path(x0, y0 + h * 0.02, cab_x - h * 0.06, y1 - h * 0.02, h * 0.1, h * 0.1)
         cv.drawPath(trailer, paint(shader=body_shader(base, y0, y1, st)))
+        wrap(cv, st, trailer, base, x0, y0, cab_x - h * 0.06, y1, h)
         for k in range(6):  # dorse kaburgaları
             xx = x0 + L * 0.05 + k * (cab_x - x0 - L * 0.08) / 6
             cv.drawLine(xx, y0 + h * 0.12, xx, y1 - h * 0.12, paint(mix(base, .3, '#000000'), 110, stroke=2))
@@ -128,7 +196,7 @@ def draw(kind, c, style, hidden=False):
         cv.drawRRect(rrect(x0 + h * 0.2, y0 + h * 0.06, x0 + (x1 - x0) * 0.5, y0 + h * 0.16, h * 0.05), paint('#FFFFFF', 140))
         cv.drawRRect(rrect(x0 + h * 0.25, y0 + h * 0.08, x0 + (x1 - x0) * 0.3, y0 + h * 0.12, h * 0.02), paint('#FFFFFF', 220))
     # dış çizgi: açık renklerde de kenar belirgin olsun
-    outline = c if st == 'neon' else mix(base, .45, '#000000')
+    outline = c if st == 'neon' else '#E0A800' if st == 'altin' else mix(base, .45, '#000000')
     ow = 4 if st == 'neon' else 2.5
     if kind == 'truck':
         cv.drawPath(body_path(x0, y0 + h * 0.02, x0 + (x1 - x0) * 0.74 - h * 0.06, y1 - h * 0.02, h * 0.1, h * 0.1), paint(outline, stroke=ow))
@@ -150,7 +218,7 @@ def main():
              'export const VEHICLE_IMAGES: Record<Kind, Record<string, ImageSourcePropType[]>> = {']
     for kind in KINDS:
         lines.append(f'  {kind}: {{')
-        for style in STYLES:
+        for style in ALL_STYLES:
             reqs = []
             for i, c in enumerate(COLORS):
                 name = f'{kind}-{style}-{i}.png'

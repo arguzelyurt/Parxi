@@ -51,3 +51,4 @@ _sync.tgz
 _sync/
 _web.tgz
 __pycache__/
+.webdist.tgz

@@ -27,6 +27,15 @@ const IMAGES: Record<string, ImageSourcePropType> = {
   super: require('../../assets/cars/super.png'),
   roket: require('../../assets/cars/roket.png'),
   altin: require('../../assets/cars/altin.png'),
+  // Market'e özel
+  elektrik: require('../../assets/cars/elektrik.png'),
+  pizza: require('../../assets/cars/pizza.png'),
+  cop: require('../../assets/cars/cop.png'),
+  safari: require('../../assets/cars/safari.png'),
+  vincli: require('../../assets/cars/vincli.png'),
+  ralli: require('../../assets/cars/ralli.png'),
+  altintaksi: require('../../assets/cars/altintaksi.png'),
+  uzay: require('../../assets/cars/uzay.png'),
 };
 
 /** Araba görseli (2:1). silhouette: henüz açılmamış model, tek renk gölge olarak. */

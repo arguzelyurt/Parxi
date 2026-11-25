@@ -4,7 +4,9 @@
 
 export interface CarModel {
   key: string;
+  /** Açıldığı seviye (özel arabalarda 0: yalnız market'ten) */
   level: number;
+  special?: boolean;
 }
 
 export const CAR_MODELS: CarModel[] = [
@@ -32,7 +34,15 @@ export const CAR_MODELS: CarModel[] = [
   { key: 'altin', level: 260 },
 ];
 
-export const carByKey = (key: string): CarModel => CAR_MODELS.find((m) => m.key === key) ?? CAR_MODELS[0];
+/** Yalnız market'te coin ile alınan özel arabalar (market kimliği: 'garage:<key>') */
+export const SPECIAL_CARS: CarModel[] = ['elektrik', 'pizza', 'cop', 'safari', 'vincli', 'ralli', 'altintaksi', 'uzay'].map((key) => ({
+  key,
+  level: 0,
+  special: true,
+}));
+
+export const carByKey = (key: string): CarModel =>
+  CAR_MODELS.find((m) => m.key === key) ?? SPECIAL_CARS.find((m) => m.key === key) ?? CAR_MODELS[0];
 
 /** Bitirilen en yüksek seviyeye göre açılmış modeller */
 export const unlockedCars = (levelsDone: number): CarModel[] => CAR_MODELS.filter((m) => m.level <= Math.max(1, levelsDone));
