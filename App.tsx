@@ -61,7 +61,7 @@ import TabBar, { Tab } from './src/ui/TabBar';
 import { MAX_W } from './src/ui/layout';
 import { buyItem, equipItem, Wallet } from './src/core/market';
 
-type Screen = { kind: 'tabs' } | { kind: 'level' } | { kind: 'daily'; key: string };
+type Screen = { kind: 'tabs' } | { kind: 'level'; n: number } | { kind: 'daily'; key: string };
 
 export default function App() {
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -153,34 +153,46 @@ export default function App() {
   // Dil her çizimden önce ayarlanır; Ayarlar'dan değişince bütün ekranlar yeniden çizilir
   setLang(resolveLang(progress?.lang ?? 'auto', deviceLang));
 
-  const n = progress?.level ?? 1;
+  // Oynanan seviye ekranda tutulur: kazanınca progress.level hemen artar, ama kazanma kartı açık kalır.
+  const n = screen.kind === 'level' ? screen.n : (progress?.level ?? 1);
   const level = useMemo(() => levelFor(n), [n]);
+  const playLevel = useCallback(() => {
+    const p = progressRef.current;
+    if (p) setScreen({ kind: 'level', n: p.level });
+  }, []);
   const today = dailyKey(new Date());
   const dailyKeyOpen = screen.kind === 'daily' ? screen.key : null;
   const daily = useMemo(() => (dailyKeyOpen ? dailyLevel(dailyKeyOpen) : null), [dailyKeyOpen]);
 
   const onLevelWin = useCallback(
     (r: WinResult) =>
-      update((p) => ({
-        ...p,
-        coins: p.coins + coinsForLevel(r.stars, !!level.hard),
-        piggy: piggyAfterLevel(p.piggy, p.level),
-        stars: { ...p.stars, [level.id]: Math.max(r.stars, p.stars[level.id] ?? 0) },
-        ads: onLevelWon(p.ads),
-        // Haritanın son seviyesi: harita ödülü (bir kez)
-        ...(() => {
-          const m = mapCompletedAt(p.level);
-          return m ? claimMap({ coins: p.coins + coinsForLevel(r.stars, !!level.hard), boosters: p.boosters, mapsClaimed: p.mapsClaimed }, m.index) : {};
-        })(),
-        missions: applyWin(ensureMissions(p.missions, todayUTC()), {
-          stars: r.stars,
-          launches: r.launches,
-          usedHelp: r.usedHelp,
-          isDaily: false,
-          hard: !!level.hard,
-        }),
-      })),
-    [update, level],
+      update((p) => {
+        // Yalnız sıradaki seviye ödül verir ve ilerletir (aynı seviye iki kez ödül vermez).
+        if (n !== p.level) return p;
+        const coins = p.coins + coinsForLevel(r.stars, !!level.hard);
+        const m = mapCompletedAt(p.level);
+        const nextLevel = p.level + 1;
+        return {
+          ...p,
+          level: nextLevel,
+          coins,
+          piggy: piggyAfterLevel(p.piggy, p.level),
+          stars: { ...p.stars, [level.id]: Math.max(r.stars, p.stars[level.id] ?? 0) },
+          ads: onLevelWon(p.ads),
+          starterOfferAt:
+            p.starterOfferAt === 0 && nextLevel > ECONOMY.starterUnlockLevel ? Date.now() : p.starterOfferAt,
+          // Haritanın son seviyesi: harita ödülü (bir kez)
+          ...(m ? claimMap({ coins, boosters: p.boosters, mapsClaimed: p.mapsClaimed }, m.index) : {}),
+          missions: applyWin(ensureMissions(p.missions, todayUTC()), {
+            stars: r.stars,
+            launches: r.launches,
+            usedHelp: r.usedHelp,
+            isDaily: false,
+            hard: !!level.hard,
+          }),
+        };
+      }),
+    [update, level, n],
   );
 
   /** Günlük ödül yalnızca günün ilk bitirişinde; her 7 günlük seride bonus. */
@@ -334,7 +346,7 @@ export default function App() {
     const ads = rollDay(p.ads, todayUTC());
     const decision = shouldShowInterstitial(
       ads,
-      { level: p.level, won: true, isDaily: false, online: Ads.interstitialReady(), now: trustedNow(p) },
+      { level: p.level - 1, won: true, isDaily: false, online: Ads.interstitialReady(), now: trustedNow(p) },
       getAdRules(),
     );
     let after = ads;
@@ -350,12 +362,8 @@ export default function App() {
         ]);
       }
     }
-    update((cur) => {
-      const level = cur.level + 1;
-      const starterOfferAt =
-        cur.starterOfferAt === 0 && level > ECONOMY.starterUnlockLevel ? Date.now() : cur.starterOfferAt;
-      return { ...cur, level, ads: after, starterOfferAt };
-    });
+    update((cur) => ({ ...cur, ads: after }));
+    setScreen({ kind: 'level', n: p.level });
   }, [update]);
 
   return (
@@ -381,7 +389,7 @@ export default function App() {
                     <HomeScreen
                       progress={progress}
                       todayKey={today}
-                      onPlay={() => setScreen({ kind: 'level' })}
+                      onPlay={playLevel}
                       onDaily={() => setTab('daily')}
                       onGarage={() => setTab('garage')}
                       onMap={() => setTab('map')}
@@ -392,7 +400,7 @@ export default function App() {
                     />
                   )}
                   {tab === 'map' && (
-                    <MapScreen progress={progress} onPlay={() => setScreen({ kind: 'level' })} onShop={() => money.openShop()} />
+                    <MapScreen progress={progress} onPlay={playLevel} onShop={() => money.openShop()} />
                   )}
                   {tab === 'daily' && (
                     <DailyScreen
