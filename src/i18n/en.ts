@@ -380,7 +380,7 @@ export const en: Record<keyof typeof tr, string> = {
   'lives.exitTitle': 'Quit this level?',
   'lives.exitSub': 'Quitting costs 1 life.',
   'lives.keepPlaying': 'Keep playing',
-  'lives.exitAnyway': 'Quit · -1 ❤',
+  'lives.exitAnyway': 'Quit (-1 ❤)',
   'reward.taken': 'Claimed',
   'reward.waiting': 'Waiting for you',
   'map.replay': '▶ Play again',

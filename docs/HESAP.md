@@ -1,4 +1,6 @@
-# Parxi — Hesap ve Bulut Kayıt Planı (ileride)
+# Parxi — Hesap ve Bulut Kayıt
+
+Durum: **kodu yazıldı (26 Kasım 2026)**. Çalışması için aşağıdaki "Firebase konsol adımları" yapılmalı.
 
 Durum: **planlandı, geliştirilmedi.** Önce Parxi'de yapılacak, oturunca aynı yapı Glugo ve Floxi'ye taşınacak.
 
@@ -71,3 +73,41 @@ Oyuncu isterse hesap açar; ilerlemesi (seviye, coin, güçlendiriciler, garaj, 
 7. Gizlilik politikası, STORE.md beyanları, TR/EN metinler
 8. Test: iki telefonda aynı hesap, misafir → hesap, hesap silme, çevrimdışıyken oynayıp sonra eşitleme
 9. Aynı modülü Glugo ve Floxi'ye taşı
+
+
+## Firebase konsol adımları (kullanıcının yapacağı)
+1. **Authentication → Sign-in method**: *Email/Password*, *Google* ve *Apple* sağlayıcılarını aç.
+   - Apple için Services ID gerekmez (yalnız iOS uygulaması); "Apple" sağlayıcısını açmak yeterli.
+2. **Firestore Database → Create database** (production mode, bölge: `eur3` ya da `europe-west`).
+3. **Firestore → Rules** sekmesine şunu yapıştır ve yayınla:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid} {
+         allow read, write, delete: if request.auth != null && request.auth.uid == uid
+           && (request.resource == null || request.resource.data.save is string);
+       }
+     }
+   }
+   ```
+4. Google açıldıktan sonra **Project settings → Your apps**'ten `GoogleService-Info.plist` (iOS) ve `google-services.json` (Android) dosyalarını **yeniden indir**, `~/Parxi`'deki eskilerin yerine koy ve commit et.
+   - `app.config.js` bu dosyalarda Google bilgisini (REVERSED_CLIENT_ID, web client id) bulunca Google giriş eklentisini kendiliğinden ekler. Bulamazsa Google düğmesi görünmez, derleme bozulmaz.
+   - Android'de Google girişi için Play Console'daki uygulama imzalama SHA-1'i Firebase'e eklenmeli.
+5. Apple Developer: "Sign in with Apple" yeteneği EAS derlemesinde kendiliğinden açılır (`ios.usesAppleSignIn: true`).
+
+## Uygulamadaki kurallar
+- Giriş isteğe bağlı: Ayarlar → Hesap. Girişsiz oyun aynen çalışır.
+- Girişte buluttaki kayıt okunur:
+  - Bulutta kayıt yoksa telefondaki yazılır.
+  - Telefondaki kayıt boşsa (seviye 1) buluttaki alınır.
+  - İkisi farklıysa "Bu telefon (Seviye X) / Hesap (Seviye Y)" diye sorulur. Satın almalar ve sahip olunan kozmetikler her iki durumda korunur.
+- Sonraki açılışlarda birleştirme kuralı `src/core/cloud.ts`: ileri olan kayıt kazanır, coin toplanmaz, satın almalar birleşir.
+- Yazma: arka plana geçince, her 5 seviyede bir ve "Şimdi eşitle" ile.
+- Hesap silme uygulama içinden: buluttaki kayıt + Firebase hesabı silinir, Apple'da token iptal edilir.
+- Dosyalar: `src/services/account.ts`, `src/core/cloud.ts`, `src/ui/AccountSheet.tsx`, `app.config.js`.
+
+## Yayın öncesi
+- Gizlilik politikası: e-posta adresi ve kullanıcı kimliği (yalnız giriş yapanlar için), oyun ilerlemesi Firestore'da; hesap silme yolu.
+- App Store "App Privacy": Contact Info → Email Address (App Functionality, linked to user), Identifiers → User ID.
+- Play "Data safety": aynı veriler + "hesap silme isteği" bağlantısı.

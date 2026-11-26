@@ -378,7 +378,7 @@ export const tr = {
   'lives.exitTitle': 'Çıkmak istiyor musun?',
   'lives.exitSub': 'Yarıda bırakırsan 1 can gider.',
   'lives.keepPlaying': 'Oynamaya devam et',
-  'lives.exitAnyway': 'Çık · -1 ❤',
+  'lives.exitAnyway': 'Çık (-1 ❤)',
   'reward.taken': 'Alındı',
   'reward.waiting': 'Seni bekliyor',
   'map.replay': '▶ Tekrar oyna',

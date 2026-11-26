@@ -109,8 +109,19 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [x] İçerik: 8 yeni kaplama (toplam 12), 7 yolcu görünümü, 5 yeni tema (toplam 10), 4 durak, 4 kutlama efekti, 8 market'e özel garaj arabası, Mega paket
 - [ ] Mağaza ekran görüntüleri yeni market ve durakla yeniden üretilecek
 
-### Faz 5 — Hesap ve bulut kayıt (ileride) · ayrıntı: docs/HESAP.md
-- [ ] İsteğe bağlı giriş: Apple, Google, e-posta/şifre (Firebase Authentication)
-- [ ] İlerlemenin Firestore'a kaydı, telefonlar arası eşitleme, çakışma kuralı
-- [ ] Uygulama içinden hesap silme, gizlilik politikası ve mağaza beyanlarının güncellenmesi
+### Faz 4.7 — İkinci test geri bildirimi (26 Kasım 2026)
+- [x] Bütün araçlar üstü açık: koyu cam kabin, kapasite kadar koltuk (otopark ve durak)
+- [x] Can sistemi: 5 can, 10 dakikada bir dolar; baştan başlamak / yarıda bırakmak 1 can; reklamla +1, 300 coin ile hepsi
+- [x] Harita: geçilen seviyeler tekrar oynanabilir (yalnız yeni yıldızlar coin verir), biten haritalar açılıp kapanır
+- [x] Alınan ödüller kaybolmaz, "✓ Alındı" olarak görünür (harita, görevler, sandık, Günlük Otopark, market hediyesi)
+- [x] Bildirim ışıkları: kırmızı nokta (ana sayfa, harita, market, garaj), garajda ve haritada "YENİ"
+- [x] Yazı tipi: Nunito
+- [x] Ana sayfa: "Kaldığın yerden devam" kartı, yol şeridi, yakın hedefler, nefes alan "Devam et"
+
+### Faz 5 — Hesap ve bulut kayıt · ayrıntı: docs/HESAP.md
+- [x] İsteğe bağlı giriş: Apple, Google, e-posta/şifre (Firebase Authentication) — kod hazır
+- [x] İlerlemenin Firestore'a kaydı, telefonlar arası eşitleme, çakışma kuralı
+- [x] Uygulama içinden hesap silme
+- [ ] Firebase konsolunda sağlayıcıları ve Firestore'u açmak, yapılandırma dosyalarını yenilemek (HESAP.md adımları)
+- [ ] Gizlilik politikası ve mağaza veri beyanlarının güncellenmesi
 - [ ] Parxi'de oturunca Glugo ve Floxi'ye taşıma
