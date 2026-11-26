@@ -118,6 +118,17 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [x] Yazı tipi: Nunito
 - [x] Ana sayfa: "Kaldığın yerden devam" kartı, yol şeridi, yakın hedefler, nefes alan "Devam et"
 
+### Faz 4.8 — Üçüncü test geri bildirimi (26 Kasım 2026)
+- [x] Görevler: pano ikonu, alınacak ödül varken ünlem + 3 saniyede bir sallanma; ayrı panel; "Topla"da coinler sayaca uçar, sayaç zıplar
+- [x] Günde 4 görev; yeni türler: yolcu taşı, otobüs/tır/araba doldur, araç park et; her görevin kendi ikonu (scripts/make_icons.py)
+- [x] Gizlilik politikası: uygulama içinde okunur (src/content/privacy.ts) + web sayfası docs/privacy/index.html (GitHub Pages)
+- [x] Candy Crush tarzı seviye haritası: temalı zeminler ve süsler (34 çizim), kıvrımlı yol, 3'erli kısımlar, sonraki kısım bulut + kilit altında
+- [x] Vitrin: spot ışığı, podyum, süzülen araba, yansıma, parıltı (ana sayfa, garaj detayı, kazanma kartı)
+- [x] Yeni araba açılınca "Vitrine koy"; oyun sırasında kilitli ödül kartı + yolcular bindikçe dolan çubuk
+- [x] Durak: öndeki yolcuyla aynı renkte arka arkaya bekleyenler de büyük
+- [x] Hareketli renkli Parxi logosu, çizim sekme ikonları (seçilince zıplar), garajda nadirlik renkli kartlar
+- [ ] Yapay zekâyla üretilmiş gerçekçi araba görselleri (istenirse aynı adla assets/cars/ içine konur)
+
 ### Faz 5 — Hesap ve bulut kayıt · ayrıntı: docs/HESAP.md
 - [x] İsteğe bağlı giriş: Apple, Google, e-posta/şifre (Firebase Authentication) — kod hazır
 - [x] İlerlemenin Firestore'a kaydı, telefonlar arası eşitleme, çakışma kuralı

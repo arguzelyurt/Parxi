@@ -62,3 +62,10 @@ npx eas-cli@latest submit --platform android           # Play'de önce kapalı t
 - 260. seviyeden sonra yeni garaj modelleri
 - Sonraki diller: Almanca, İspanyolca, Portekizce (Brezilya), Japonca
 - **app-ads.txt:** AdMob gelirini korumak için geliştirici web sitesinde `app-ads.txt` önerilir
+
+
+## Gizlilik politikası adresi (GitHub Pages)
+- Uygulamadaki ve mağazadaki adres: https://arguzelyurt.github.io/Parxi/privacy/
+- Bir kez açılır: GitHub → arguzelyurt/Parxi → Settings → Pages → Source: "Deploy from a branch", Branch: `main`, klasör `/docs` → Save. Birkaç dakika sonra adres çalışır.
+- Metin `src/content/privacy.ts` içinde; değişince `npx tsx scripts/make_privacy.ts` çalıştırılıp commit'lenir.
+- Yayından önce `src/config.ts` → `SUPPORT_EMAIL` doldurulmalı (sayfada iletişim adresi olarak görünür).
