@@ -1,7 +1,7 @@
 // Ortak parçalar: Glugo'daki düğme, kart ve başlık düzeni.
 import React, { useRef } from 'react';
 import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
-import { useFlyCoins } from './FlyCoins';
+import { useFlyCoins, ViewRef } from './FlyCoins';
 import { ICONS } from './icons';
 import { Text } from './Text';
 import { UI } from '../game/palette';
@@ -46,7 +46,7 @@ export function TextLink({ label, onPress }: { label: string; onPress(): void })
 /** Coin sayacı: uçan coinlerin hedefi; coin gelince zıplar */
 export function Coins({ coins, onPress }: { coins: number; onPress(): void }) {
   const fly = useFlyCoins();
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewRef>(null);
   const scale = fly ? fly.bump.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) : 1;
   return (
     <Pressable onPress={onPress} hitSlop={12}>

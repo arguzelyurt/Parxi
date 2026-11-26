@@ -10,14 +10,19 @@ import {
   ensureMissions,
   freshMissions,
   missionsFor,
+  MISSIONS_PER_DAY,
   missionsLeft,
 } from './missions';
 import { planNotifications, streakAtRisk } from './notifyPlan';
 
-test('günün görevleri: 3 tane, farklı türler, herkese aynı', () => {
+test('günün görevleri: 4 tane, farklı türler, biri taşıma/park, herkese aynı', () => {
   const m = missionsFor('2026-11-22');
-  assert.equal(m.length, 3);
-  assert.equal(new Set(m.map((x) => x.kind)).size, 3);
+  assert.equal(m.length, MISSIONS_PER_DAY);
+  assert.equal(new Set(m.map((x) => x.kind)).size, MISSIONS_PER_DAY);
+  for (let d = 1; d <= 20; d++) {
+    const ms = missionsFor(`2026-12-${String(d).padStart(2, '0')}`);
+    assert.ok(ms.some((x) => ['passengers', 'buses', 'trucks', 'cars', 'launches'].includes(x.kind)));
+  }
   assert.deepEqual(m, missionsFor('2026-11-22'));
   assert.equal(ensureMissions(freshMissions('2026-11-21'), '2026-11-22').day, '2026-11-22');
 });
@@ -30,6 +35,8 @@ test('görev ilerlemesi, ödül, sandık', () => {
       { kind: 'launches', target: 10, reward: 15 },
       { kind: 'noHelp', target: 1, reward: 30 },
     ],
+    progress: [0, 0, 0],
+    claimed: [false, false, false],
   };
   s = applyWin(s, { stars: 3, launches: 6, usedHelp: true, isDaily: false, hard: false });
   assert.deepEqual(s.progress, [1, 6, 0]);
@@ -46,6 +53,24 @@ test('görev ilerlemesi, ödül, sandık', () => {
   assert.equal(claimMission(s, 0).coins, 0); // ikinci kez yok
   assert.equal(canClaimChest(s), true);
   assert.equal(missionsLeft(s), false);
+});
+
+test('yeni görevler: yolcu, otobüs, tır, araba sayılır', () => {
+  let s: MissionState = {
+    ...freshMissions('d'),
+    missions: [
+      { kind: 'passengers', target: 150, reward: 25 },
+      { kind: 'buses', target: 5, reward: 25 },
+      { kind: 'trucks', target: 3, reward: 30 },
+      { kind: 'cars', target: 20, reward: 20 },
+    ],
+    progress: [0, 0, 0, 0],
+    claimed: [false, false, false, false],
+  };
+  s = applyWin(s, { stars: 2, launches: 20, usedHelp: false, isDaily: false, hard: false, passengers: 96, buses: 4, trucks: 2, cars: 14 });
+  assert.deepEqual(s.progress, [96, 4, 2, 14]);
+  s = applyWin(s, { stars: 2, launches: 20, usedHelp: false, isDaily: false, hard: false, passengers: 96, buses: 4, trucks: 2, cars: 14 });
+  assert.deepEqual(s.progress, [150, 5, 3, 20]);
 });
 
 test('bildirim planı: günde en fazla bir, seri tehlikedeyse öncelik', () => {

@@ -6,6 +6,8 @@ import * as Haptics from 'expo-haptics';
 import { ICONS } from './icons';
 
 type Pt = { x: number; y: number };
+/** Ölçülebilen görünümün örneği (RN 0.88: ReactNativeElement) */
+export type ViewRef = React.ComponentRef<typeof View>;
 interface Flight {
   id: number;
   from: Pt;
@@ -15,9 +17,9 @@ interface Flight {
 
 interface Ctx {
   /** `from` ölçülebilen bir görünüm (ref) ya da ekran noktası; bitince onDone */
-  fly(from: View | Pt | null, amount: number, onDone?: () => void): void;
+  fly(from: ViewRef | Pt | null, amount: number, onDone?: () => void): void;
   /** Coin sayacı kendini hedef olarak kaydeder */
-  setTarget(v: View | null): void;
+  setTarget(v: ViewRef | null): void;
   /** Sayaç "zıplama" değeri (0→1→0) */
   bump: Animated.Value;
 }
@@ -26,24 +28,24 @@ const FlyCtx = createContext<Ctx | null>(null);
 
 export const useFlyCoins = () => useContext(FlyCtx);
 
-const measure = (v: View): Promise<Pt | null> =>
+const measure = (v: ViewRef): Promise<Pt | null> =>
   new Promise((res) => {
     try {
-      v.measureInWindow((x, y, w, h) => res(w || h ? { x: x + w / 2, y: y + h / 2 } : null));
+      v.measureInWindow((x: number, y: number, w: number, h: number) => res(w || h ? { x: x + w / 2, y: y + h / 2 } : null));
     } catch {
       res(null);
     }
   });
 
 export function FlyCoinsProvider({ children }: { children: React.ReactNode }) {
-  const target = useRef<View | null>(null);
+  const target = useRef<ViewRef | null>(null);
   const bump = useRef(new Animated.Value(0)).current;
   const [flights, setFlights] = useState<Flight[]>([]);
   const nextId = useRef(1);
 
   const fly = useCallback<Ctx['fly']>(
     async (from, amount, onDone) => {
-      const start = from && 'measureInWindow' in from ? await measure(from as View) : (from as Pt | null);
+      const start = from && 'measureInWindow' in from ? await measure(from as ViewRef) : (from as Pt | null);
       const end = target.current ? await measure(target.current) : null;
       if (!start || !end) {
         onDone?.();
@@ -67,7 +69,7 @@ export function FlyCoinsProvider({ children }: { children: React.ReactNode }) {
     [bump],
   );
 
-  const setTarget = useCallback((v: View | null) => {
+  const setTarget = useCallback((v: ViewRef | null) => {
     if (v) target.current = v;
   }, []);
 

@@ -14,7 +14,7 @@ import {
 } from '../core/missions';
 import { UI } from '../game/palette';
 import { t } from '../i18n';
-import { useFlyCoins } from './FlyCoins';
+import { useFlyCoins, ViewRef } from './FlyCoins';
 import { ICONS } from './icons';
 import { useNow } from './Lives';
 
@@ -38,7 +38,7 @@ export default function MissionsPanel({ state, onClaim, onClaimChest, onClose }:
   const total = state.missions.length;
   const claimed = state.claimed.filter(Boolean).length;
   const chestReady = canClaimChest(state);
-  const chestRef = useRef<View>(null);
+  const chestRef = useRef<ViewRef>(null);
 
   // Açılış: kart aşağıdan yaylanarak gelir
   const a = useRef(new Animated.Value(0)).current;
@@ -123,9 +123,9 @@ function Row(p: {
   done: boolean;
   claimable: boolean;
   claimed: boolean;
-  onClaim(from: View | null): void;
+  onClaim(from: ViewRef | null): void;
 }) {
-  const btn = useRef<View>(null);
+  const btn = useRef<ViewRef>(null);
   const pct = Math.min(1, p.progress / p.target);
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {

@@ -48,7 +48,7 @@ import { CarStyle, carStyleFor, fxFor, RiderSkin, riderFor, stopFor, themeFor } 
 import { HeadFront, HeadTop, StopBand, WinFx } from './Cosmetics';
 import { ICONS } from './icons';
 import { Coins } from './kit';
-import { useFlyCoins } from './FlyCoins';
+import { useFlyCoins, ViewRef } from './FlyCoins';
 import { Showcase } from './Showcase';
 import { track } from '../services/analytics';
 import CarArt from './CarArt';
@@ -1013,7 +1013,7 @@ export function RiderTop({ color, size, still }: { color: number; size: number; 
 /** Kazanma kartındaki "+N coin": coinler buradan sayaca uçar */
 function WonCoins({ text, amount }: { text: string; amount: number }) {
   const fly = useFlyCoins();
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewRef>(null);
   useEffect(() => {
     const id = setTimeout(() => fly?.fly(ref.current, amount), 450);
     return () => clearTimeout(id);
