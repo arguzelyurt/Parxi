@@ -70,7 +70,7 @@ export const en: Record<keyof typeof tr, string> = {
   'mission.threeStarN': 'Finish {n} levels with 3 stars',
   'mission.noHelp': 'Finish {n} levels without boosters',
   'mission.daily': 'Solve the Daily Lot',
-  'mission.launches': 'Send {n} vehicles on their way in finished levels',
+  'mission.launches': 'Park {n} vehicles at the stop',
   'mission.hard': 'Finish a Hard level',
 
   // Daily
@@ -443,4 +443,21 @@ export const en: Record<keyof typeof tr, string> = {
   'account.err.recent-login': 'For security, sign out and sign in again, then retry.',
   'account.err.unavailable': 'Accounts are not available in this version.',
   'account.err.unknown': 'Something went wrong, please try again.',
+  // Görevler 2, harita, vitrin
+  'game.inShowcase': 'In showcase',
+  'game.prizeLocked': 'This level’s prize is locked',
+  'game.toShowcase': 'Show it off',
+  'map.cloud': 'Finish {name} to unlock the next 3 maps!',
+  'mission.passengers': 'Carry {n} passengers',
+  'mission.buses': 'Fill and send off {n} buses',
+  'mission.trucks': 'Fill and send off {n} trucks',
+  'mission.cars': 'Fill and send off {n} cars',
+  'missions.chestHint': 'Finish all tasks to open the chest: ● {coins} + 💡 {hint}',
+  'missions.chestReady': 'Chest ready! Tap to open',
+  'missions.collect': 'COLLECT',
+  'missions.ends': 'Resets in {time}',
+  'settings.policyUpdated': 'Last updated: {date}',
+  'settings.policyWeb': 'Open web page',
+  'time.h': 'h',
+  'time.m': 'm',
 };

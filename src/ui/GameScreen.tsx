@@ -46,6 +46,10 @@ import { LivesPanel, LivesPill } from './Lives';
 import { Btn, TextLink } from './kit';
 import { CarStyle, carStyleFor, fxFor, RiderSkin, riderFor, stopFor, themeFor } from '../game/skins';
 import { HeadFront, HeadTop, StopBand, WinFx } from './Cosmetics';
+import { ICONS } from './icons';
+import { Coins } from './kit';
+import { useFlyCoins } from './FlyCoins';
+import { Showcase } from './Showcase';
 import { track } from '../services/analytics';
 import CarArt from './CarArt';
 import { HIDDEN_IMAGES, VEHICLE_IMAGES } from '../game/vehicleImages';
@@ -73,7 +77,19 @@ export interface WinResult {
   parked: number;
   /** Bu seviyede herhangi bir güçlendirici (ya da reklamla kurtarma) kullanıldı mı */
   usedHelp: boolean;
+  /** Görevler için: taşınan yolcu ve yola çıkan araç türleri */
+  passengers: number;
+  buses: number;
+  trucks: number;
+  cars: number;
 }
+
+const tripStats = (level: Level) => ({
+  passengers: level.queue.length,
+  buses: level.vehicles.filter((v) => v.kind === 'bus').length,
+  trucks: level.vehicles.filter((v) => v.kind === 'truck').length,
+  cars: level.vehicles.filter((v) => v.kind === 'car').length,
+});
 
 interface Props {
   level: Level;
@@ -282,7 +298,7 @@ export default function GameScreen(props: Props) {
     wonReported.current = true;
     const stars = starsFor(level, s);
     setWonCoins(coinsForRef.current(stars));
-    onWinRef.current({ stars, launches: s.taps, parked: s.peak, usedHelp: usedHelp.current });
+    onWinRef.current({ stars, launches: s.taps, parked: s.peak, usedHelp: usedHelp.current, ...tripStats(level) });
     track({ name: 'level_complete', level: trackId, launches: s.taps, parked: s.peak, stars });
   }, [s, busy, trackId, level]);
 
@@ -481,7 +497,7 @@ export default function GameScreen(props: Props) {
   const grid = useMemo(() => occupancy(level, s), [s, level]);
   const hiddenSet = useMemo(() => new Set(level.hidden ?? []), [level]);
   const stars = starsFor(level, s);
-  const winResult = (): WinResult => ({ stars, launches: s.taps, parked: s.peak, usedHelp: usedHelp.current });
+  const winResult = (): WinResult => ({ stars, launches: s.taps, parked: s.peak, usedHelp: usedHelp.current, ...tripStats(level) });
 
   const slotW = Math.min(80 * k, Math.floor((width - 24 - 20 - (s.dock.length - 1) * 6) / s.dock.length));
   // Durakta araçlar dik durur (burnu yukarı): koltuklar seçilebilsin diye daha uzun çizilir
@@ -492,7 +508,12 @@ export default function GameScreen(props: Props) {
   const vipLeft = vipPatienceLeft(level, s);
   const tutText = tut >= 0 ? t(`tut.${tut}` as Key) : null;
   const queueVisible = Math.max(5, Math.floor((width - 90 * k) / (25 * k)));
-  const queue = level.queue.slice(s.qi, s.qi + queueVisible);
+  const queueAll = level.queue.slice(s.qi, s.qi + queueVisible);
+  // Öndeki yolcuyla aynı renkte arka arkaya bekleyenler de büyük görünür (birlikte binecekler)
+  let leadRun = queueAll.length ? 1 : 0;
+  while (leadRun < queueAll.length && queueAll[leadRun] === queueAll[0]) leadRun++;
+  // Büyük yolcular yer kapladığı için görünen kuyruk biraz kısalır
+  const queue = queueAll.slice(0, Math.max(leadRun, queueVisible - Math.ceil((leadRun - 1) * 0.35)));
   const more = passengersLeft(level, s) - queue.length;
 
   const boosterLabel = (k: Booster) =>
@@ -513,9 +534,7 @@ export default function GameScreen(props: Props) {
             {props.replay && <Text style={styles.replayTag}>{t('game.replayTag')}</Text>}
           </View>
           <View style={[styles.headerSide, { alignItems: 'flex-end', gap: 4 }]}>
-            <Pressable onPress={money.openShop} hitSlop={12}>
-              <Text style={styles.coinText}>● {progress.coins} +</Text>
-            </Pressable>
+            <Coins coins={progress.coins} onPress={money.openShop} />
             {props.lifeCost !== false && <LivesPill lives={progress.lives} compact onPress={() => setNeedLife(true)} />}
           </View>
         </View>
@@ -527,7 +546,7 @@ export default function GameScreen(props: Props) {
             <Text style={styles.stopSign}>{stopSkin.sign}</Text>
             {queue.map((c, i) => (
               <View key={`${s.qi + i}`}>
-                <PersonView color={c} size={(i === 0 ? 46 : 34) * k} front={i === 0} vip={level.vip?.qi === s.qi + i} />
+                <PersonView color={c} size={(i < leadRun ? (i === 0 ? 46 : 42) : 32) * k} front={i < leadRun} vip={level.vip?.qi === s.qi + i} />
                 {i === 0 && vipLeft !== null && (
                   <View style={[styles.vipBadge, vipLeft <= 1 && { backgroundColor: UI.danger }]}>
                     <Text style={styles.vipBadgeText}>⏳{Math.max(0, vipLeft)}</Text>
@@ -664,12 +683,26 @@ export default function GameScreen(props: Props) {
         </View>
         </View>
 
-        {props.newCar && (
-          <View style={styles.prize}>
-            <CarArt model={props.newCar} width={110} />
-            <Text style={styles.prizeText}>{t('game.prize')}</Text>
-          </View>
-        )}
+        {props.newCar && s.status !== 'won' && (() => {
+          // Kilitli ödül: yolcular bindikçe çubuk dolar; seviye bitince kilit açılır
+          const total = level.queue.length;
+          const pct = total ? Math.min(0.99, (total - passengersLeft(level, s)) / total) : 0;
+          return (
+            <View style={styles.prize}>
+              <View>
+                <CarArt model={props.newCar} width={96} silhouette />
+                <Image source={ICONS.lock} style={styles.prizeLock} />
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={styles.prizeText}>{t('game.prizeLocked')}</Text>
+                <View style={styles.prizeBar}>
+                  <View style={[styles.prizeFill, { width: `${Math.max(4, pct * 100)}%` }]} />
+                  <Text style={styles.prizePct}>%{Math.floor(pct * 100)}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
 
         <View style={{ flex: 1 }} />
 
@@ -710,11 +743,19 @@ export default function GameScreen(props: Props) {
             <Text style={styles.overSub}>{t('game.summary', { n: s.taps, peak: s.peak })}</Text>
             {props.newCar && (
               <View style={styles.newCar}>
-                <Text style={styles.newCarTitle}>{t('game.newCar')}</Text>
-                <View style={{ marginVertical: 10 }}>
-                  <CarArt model={props.newCar} width={150} />
-                </View>
-                <Text style={styles.overSub}>{t('game.newCarSub', { name: carName(props.newCar.key) })}</Text>
+                <Text style={styles.newCarTitle}>🔓 {t('game.newCar')}</Text>
+                <Showcase model={props.newCar} width={200} glow={UI.gold} />
+                <Text style={styles.newCarName}>{carName(props.newCar.key)}</Text>
+                {progress.favoriteCar === props.newCar.key ? (
+                  <Text style={styles.inShowcase}>✓ {t('game.inShowcase')}</Text>
+                ) : (
+                  <Pressable
+                    onPress={() => props.newCar && update((p) => ({ ...p, favoriteCar: props.newCar!.key, seenCars: [...new Set([...p.seenCars, props.newCar!.key])] }))}
+                    style={({ pressed }) => [styles.showcaseBtn, pressed && { transform: [{ scale: 0.96 }] }]}
+                  >
+                    <Text style={styles.showcaseBtnText}>⭐ {t('game.toShowcase')}</Text>
+                  </Pressable>
+                )}
               </View>
             )}
             {props.mapDone && (
@@ -732,7 +773,7 @@ export default function GameScreen(props: Props) {
                 </View>
               </View>
             )}
-            {wonCoins > 0 && <Text style={styles.reward}>{t('game.reward', { n: doubled ? wonCoins * 2 : wonCoins })}</Text>}
+            {wonCoins > 0 && <WonCoins text={t('game.reward', { n: doubled ? wonCoins * 2 : wonCoins })} amount={wonCoins} />}
             <Btn label={props.nextLabel} primary disabled={adBusy} onPress={onNext} />
             {props.extraWinAction && <Btn label={props.extraWinAction.label} onPress={() => props.extraWinAction!.onPress(winResult())} />}
             {wonCoins > 0 && !doubled && money.rewardedAvailable() && (
@@ -969,6 +1010,23 @@ export function RiderTop({ color, size, still }: { color: number; size: number; 
 }
 
 /** Piksel yolcu: kafa + renkli gövde */
+/** Kazanma kartındaki "+N coin": coinler buradan sayaca uçar */
+function WonCoins({ text, amount }: { text: string; amount: number }) {
+  const fly = useFlyCoins();
+  const ref = useRef<View>(null);
+  useEffect(() => {
+    const id = setTimeout(() => fly?.fly(ref.current, amount), 450);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <View ref={ref} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+      <Image source={ICONS.coin} style={{ width: 28, height: 28 }} />
+      <Text style={styles.reward}>{text}</Text>
+    </View>
+  );
+}
+
 export function PersonView({ color, size, front, vip }: { color: number; size: number; front?: boolean; vip?: boolean }) {
   const ctx = useContext(SkinCtx);
   const head = size * 0.38;
@@ -1182,17 +1240,21 @@ const styles = StyleSheet.create({
   prize: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    gap: 10,
+    alignSelf: 'stretch',
+    gap: 12,
     marginTop: 10,
     backgroundColor: UI.panel,
     borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderWidth: 2,
     borderColor: UI.gold,
   },
-  prizeText: { color: UI.gold, fontSize: 16, fontWeight: '900' },
+  prizeText: { color: UI.gold, fontSize: 15, fontWeight: '900' },
+  prizeLock: { position: 'absolute', right: -6, bottom: -4, width: 34, height: 34 },
+  prizeBar: { height: 20, borderRadius: 10, backgroundColor: UI.bg, overflow: 'hidden', justifyContent: 'center' },
+  prizeFill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 10, backgroundColor: UI.gold },
+  prizePct: { color: UI.text, fontSize: 12, fontWeight: '900', textAlign: 'center' },
   mapChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 8 },
   mapChip: { color: UI.text, fontWeight: '900', fontSize: 16, backgroundColor: UI.bg, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, overflow: 'hidden' },
   vipBadge: { position: 'absolute', top: -10, right: -18, backgroundColor: UI.gold, borderRadius: 8, paddingHorizontal: 4, paddingVertical: 1 },
@@ -1261,6 +1323,10 @@ const styles = StyleSheet.create({
   overSub: { color: UI.dim, textAlign: 'center' },
   newCar: { alignItems: 'center', backgroundColor: UI.bg2, borderRadius: 16, padding: 12, marginTop: 10, alignSelf: 'stretch' },
   newCarTitle: { color: UI.gold, fontWeight: '900', fontSize: 16 },
+  newCarName: { color: UI.text, fontWeight: '900', fontSize: 20, marginTop: -4 },
+  inShowcase: { color: UI.accent, fontWeight: '900', fontSize: 15, marginTop: 6 },
+  showcaseBtn: { marginTop: 8, backgroundColor: UI.gold, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 9, borderBottomWidth: 4, borderBottomColor: '#C78F00' },
+  showcaseBtnText: { color: UI.bg, fontWeight: '900', fontSize: 16 },
   reward: { color: UI.gold, fontSize: 18, fontWeight: '700', marginVertical: 8 },
   stars: { color: UI.gold, fontSize: 40, letterSpacing: 4 },
 });

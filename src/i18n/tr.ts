@@ -68,7 +68,7 @@ export const tr = {
   'mission.threeStarN': '{n} seviyeyi 3 yıldızla bitir',
   'mission.noHelp': '{n} seviyeyi güçlendirici kullanmadan bitir',
   'mission.daily': 'Günlük Otopark’ı çöz',
-  'mission.launches': 'Bitirdiğin seviyelerde {n} araç yola çıkar',
+  'mission.launches': '{n} aracı durağa park et',
   'mission.hard': 'Bir Zor seviye bitir',
 
   // Günlük
@@ -441,4 +441,21 @@ export const tr = {
   'account.err.recent-login': 'Güvenlik için çıkış yapıp yeniden giriş yap, sonra tekrar dene.',
   'account.err.unavailable': 'Hesap bu sürümde kullanılamıyor.',
   'account.err.unknown': 'Bir şeyler ters gitti, tekrar dene.',
+  // Görevler 2, harita, vitrin
+  'game.inShowcase': 'Vitrinde',
+  'game.prizeLocked': 'Bu seviyenin ödülü kilitli',
+  'game.toShowcase': 'Vitrine koy',
+  'map.cloud': '{name} haritasını bitir, sonraki 3 harita açılsın!',
+  'mission.passengers': '{n} yolcu taşı',
+  'mission.buses': '{n} otobüsü doldurup yola çıkar',
+  'mission.trucks': '{n} tırı doldurup yola çıkar',
+  'mission.cars': '{n} arabayı doldurup yola çıkar',
+  'missions.chestHint': 'Bütün görevleri bitir, sandığı aç: ● {coins} + 💡 {hint}',
+  'missions.chestReady': 'Sandık hazır! Dokun ve aç',
+  'missions.collect': 'TOPLA',
+  'missions.ends': 'Yenilenmesine {time}',
+  'settings.policyUpdated': 'Son güncelleme: {date}',
+  'settings.policyWeb': 'Web sayfasında aç',
+  'time.h': 'sa',
+  'time.m': 'dk',
 };

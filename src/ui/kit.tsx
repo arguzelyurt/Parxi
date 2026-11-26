@@ -1,6 +1,8 @@
 // Ortak parçalar: Glugo'daki düğme, kart ve başlık düzeni.
-import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import React, { useRef } from 'react';
+import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { useFlyCoins } from './FlyCoins';
+import { ICONS } from './icons';
 import { Text } from './Text';
 import { UI } from '../game/palette';
 
@@ -41,10 +43,22 @@ export function TextLink({ label, onPress }: { label: string; onPress(): void })
   );
 }
 
+/** Coin sayacı: uçan coinlerin hedefi; coin gelince zıplar */
 export function Coins({ coins, onPress }: { coins: number; onPress(): void }) {
+  const fly = useFlyCoins();
+  const ref = useRef<View>(null);
+  const scale = fly ? fly.bump.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) : 1;
   return (
     <Pressable onPress={onPress} hitSlop={12}>
-      <Text style={styles.coins}>● {coins} +</Text>
+      <Animated.View
+        ref={ref}
+        onLayout={() => fly?.setTarget(ref.current)}
+        style={[styles.coinPill, { transform: [{ scale }] }]}
+      >
+        <Image source={ICONS.coin} style={styles.coinIcon} />
+        <Text style={styles.coins}>{coins}</Text>
+        <Text style={styles.coinPlus}>+</Text>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -87,7 +101,10 @@ const styles = StyleSheet.create({
   },
   btnText: { color: UI.text, fontSize: 19, fontWeight: '800', textAlign: 'center' },
   link: { color: UI.dim, fontSize: 16, textDecorationLine: 'underline' },
-  coins: { color: UI.gold, fontSize: 20, fontWeight: '800' },
+  coins: { color: UI.gold, fontSize: 20, fontWeight: '900' },
+  coinPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: UI.panel, borderRadius: 16, paddingLeft: 6, paddingRight: 4, paddingVertical: 4 },
+  coinIcon: { width: 24, height: 24 },
+  coinPlus: { color: UI.bg, backgroundColor: UI.accent, fontSize: 16, fontWeight: '900', width: 22, height: 22, borderRadius: 11, textAlign: 'center', lineHeight: 22, overflow: 'hidden' },
   tabHeader: {
     flexDirection: 'row',
     alignItems: 'center',

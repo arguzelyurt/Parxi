@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text } from './Text';
 import app from '../../app.json';
 import { PRIVACY_URL, SUPPORT_EMAIL } from '../config';
 import { UI } from '../game/palette';
 import { Progress, SPEEDS, speedName } from '../game/storage';
-import { LangSetting, t } from '../i18n';
-import { Btn, Card, kit, TabHeader } from './kit';
+import { getLang, LangSetting, t } from '../i18n';
+import { Btn, Card, kit, TabHeader, TextLink } from './kit';
+import Sheet from './Sheet';
+import { PRIVACY, PRIVACY_UPDATED } from '../content/privacy';
 
 interface Props {
   progress: Progress;
@@ -20,8 +22,27 @@ interface Props {
 }
 
 export default function SettingsScreen({ progress, update, onShop, onRestore, privacyOptions, accountLabel, onAccount }: Props) {
+  const [policy, setPolicy] = useState(false);
+  const lang = getLang() === 'tr' ? 'tr' : 'en';
   return (
     <View style={{ flex: 1 }}>
+      <Sheet visible={policy} onClose={() => setPolicy(false)}>
+        <Text style={styles.policyTitle}>{t('settings.policy')}</Text>
+        <ScrollView style={{ maxHeight: 460, alignSelf: 'stretch' }}>
+          {PRIVACY[lang].map((b) => (
+            <View key={b.h} style={{ marginBottom: 12 }}>
+              <Text style={styles.policyH}>{b.h}</Text>
+              <Text style={styles.policyP}>{b.p}</Text>
+            </View>
+          ))}
+          <Text style={styles.policyP}>
+            {t('settings.policyUpdated', { date: PRIVACY_UPDATED })}
+            {SUPPORT_EMAIL ? ` · ${SUPPORT_EMAIL}` : ''}
+          </Text>
+        </ScrollView>
+        {!!PRIVACY_URL && <TextLink label={t('settings.policyWeb')} onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} />}
+        <TextLink label={t('common.close')} onPress={() => setPolicy(false)} />
+      </Sheet>
       <TabHeader title={t('settings.title')} coins={progress.coins} onCoins={onShop} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={kit.section}>{t('account.title')}</Text>
@@ -84,7 +105,7 @@ export default function SettingsScreen({ progress, update, onShop, onRestore, pr
         <Text style={kit.section}>{t('settings.privacy')}</Text>
         <Card>
           {privacyOptions && <Btn label={t('settings.adPrefs')} onPress={privacyOptions} />}
-          {!!PRIVACY_URL && <Btn label={t('settings.policy')} onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} />}
+          <Btn label={t('settings.policy')} onPress={() => setPolicy(true)} />
           {!!SUPPORT_EMAIL && <Text style={[kit.cardSub, { marginTop: 10 }]}>{t('settings.support', { email: SUPPORT_EMAIL })}</Text>}
         </Card>
 
@@ -133,6 +154,9 @@ function Row(props: { label: string; sub?: string; value: boolean; onChange(v: b
 }
 
 const styles = StyleSheet.create({
+  policyTitle: { color: UI.text, fontSize: 22, fontWeight: '900', marginBottom: 8 },
+  policyH: { color: UI.text, fontSize: 16, fontWeight: '900' },
+  policyP: { color: UI.dim, fontSize: 14, lineHeight: 20 },
   accountCard: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   accountIcon: { fontSize: 30 },
   chev: { color: UI.dim, fontSize: 30, fontWeight: '300' },

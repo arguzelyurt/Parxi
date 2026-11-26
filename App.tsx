@@ -67,6 +67,8 @@ import { Account, currentAccount, loadCloud, onAccountChanged, saveCloud } from 
 import AccountSheet from './src/ui/AccountSheet';
 import { LivesPanel } from './src/ui/Lives';
 import Sheet from './src/ui/Sheet';
+import { FlyCoinsProvider } from './src/ui/FlyCoins';
+import MissionsPanel from './src/ui/MissionsPanel';
 import { enableFonts } from './src/ui/Text';
 import { useFonts, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
 
@@ -79,6 +81,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [, setAdsTick] = useState(0); // izin formu sonrası "gizlilik tercihleri" düğmesi için
   const [livesOpen, setLivesOpen] = useState(false);
+  const [missionsOpen, setMissionsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -215,6 +218,10 @@ export default function App() {
           missions: applyWin(ensureMissions(p.missions, todayUTC()), {
             stars: r.stars,
             launches: r.launches,
+            passengers: r.passengers,
+            buses: r.buses,
+            trucks: r.trucks,
+            cars: r.cars,
             usedHelp: r.usedHelp,
             isDaily: false,
             hard: !!level.hard,
@@ -249,6 +256,10 @@ export default function App() {
         missions: applyWin(ensureMissions(p.missions, todayUTC()), {
           stars: r.stars,
           launches: r.launches,
+          passengers: r.passengers,
+          buses: r.buses,
+          trucks: r.trucks,
+          cars: r.cars,
           usedHelp: r.usedHelp,
           isDaily: true,
           hard: true,
@@ -537,6 +548,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <FlyCoinsProvider>
       <StatusBar style="light" />
       <SafeAreaView
         style={{
@@ -564,8 +576,7 @@ export default function App() {
                       onMap={() => setTab('map')}
                       onShop={() => money.openShop()}
                       missions={ensureMissions(progress.missions, todayUTC())}
-                      onClaimMission={claim}
-                      onClaimChest={claimChest}
+                      onMissions={() => setMissionsOpen(true)}
                       onLives={() => setLivesOpen(true)}
                       dots={{ garage: badges.garage, map: badges.map }}
                     />
@@ -702,6 +713,14 @@ export default function App() {
                 onClose={() => setAccountOpen(false)}
               />
             </Sheet>
+            {missionsOpen && screen.kind === 'tabs' && (
+              <MissionsPanel
+                state={ensureMissions(progress.missions, todayUTC())}
+                onClaim={claim}
+                onClaimChest={claimChest}
+                onClose={() => setMissionsOpen(false)}
+              />
+            )}
             <ShopSheet
               visible={shopOpen}
               progress={progress}
@@ -717,6 +736,7 @@ export default function App() {
         )}
         </View>
       </SafeAreaView>
+      </FlyCoinsProvider>
     </SafeAreaProvider>
   );
 }

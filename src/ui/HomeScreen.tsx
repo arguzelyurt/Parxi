@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from './Text';
 import { streakAlive } from '../core/daily';
 import { CAR_MODELS, carByKey, nextCar } from '../core/garage';
@@ -15,8 +15,9 @@ import CarArt from './CarArt';
 import { carName, levelsDone } from './GarageScreen';
 import { Coins } from './kit';
 import { LivesPill, useNow } from './Lives';
-import MissionsCard from './MissionsCard';
-import Sheet from './Sheet';
+import { Wiggle } from './MissionsPanel';
+import { AnimatedLogo, Showcase } from './Showcase';
+import { ICONS } from './icons';
 
 interface Props {
   progress: Progress;
@@ -28,8 +29,7 @@ interface Props {
   onShop(): void;
   onLives(): void;
   missions: MissionState;
-  onClaimMission(i: number): void;
-  onClaimChest(): void;
+  onMissions(): void;
   /** Bildirim ışıkları */
   dots: { garage: boolean; map: boolean };
 }
@@ -40,7 +40,6 @@ interface Props {
  */
 export default function HomeScreen(p: Props) {
   const { progress, todayKey } = p;
-  const [missionsOpen, setMissionsOpen] = useState(false);
   const now = useNow(1000);
   const n = progress.level;
   const map = mapOfLevel(n);
@@ -93,8 +92,10 @@ export default function HomeScreen(p: Props) {
       </View>
 
       <View style={styles.hero}>
-        <CarArt model={carByKey(progress.favoriteCar)} width={220} />
-        <Text style={styles.logo}>Parxi</Text>
+        <AnimatedLogo size={50} />
+        <Pressable onPress={p.onGarage}>
+          <Showcase model={carByKey(progress.favoriteCar)} width={250} />
+        </Pressable>
       </View>
 
       {/* Kaldığın yerden devam */}
@@ -167,9 +168,9 @@ export default function HomeScreen(p: Props) {
       </View>
 
       <View style={styles.tiles}>
-        <Tile icon="🔥" label={t('home.daily')} value={dailyDone ? '✓' : `${streak}`} dot={!dailyDone} onPress={p.onDaily} />
-        <Tile icon="🚗" label={t('tab.garage')} value={`${owned}/${CAR_MODELS.length}`} dot={p.dots.garage} onPress={p.onGarage} />
-        <Tile icon="🎯" label={t('home.missions')} value={`${missionsDone}/3`} dot={missionReady} onPress={() => setMissionsOpen(true)} />
+        <Tile icon="calendar" label={t('home.daily')} value={dailyDone ? '✓' : `🔥${streak}`} dot={!dailyDone} onPress={p.onDaily} />
+        <Tile icon="car" label={t('tab.garage')} value={`${owned}/${CAR_MODELS.length}`} dot={p.dots.garage} onPress={p.onGarage} />
+        <Tile icon="missions" label={t('home.missions')} value={`${missionsDone}/${m.missions.length}`} alert={missionReady} onPress={p.onMissions} />
       </View>
 
       {progress.level > 30 && progress.piggy >= 300 && (
@@ -178,11 +179,6 @@ export default function HomeScreen(p: Props) {
         </Pressable>
       )}
 
-      <Sheet visible={missionsOpen} onClose={() => setMissionsOpen(false)}>
-        <View style={{ alignSelf: 'stretch' }}>
-          <MissionsCard state={m} onClaim={p.onClaimMission} onClaimChest={p.onClaimChest} />
-        </View>
-      </Sheet>
     </ScrollView>
   );
 }
@@ -199,15 +195,23 @@ function Goal({ icon, text, art, hot }: { icon: string; text: string; art?: Reac
   );
 }
 
-function Tile(props: { icon: string; label: string; value: string; dot?: boolean; onPress(): void }) {
+function Tile(props: { icon: keyof typeof ICONS; label: string; value: string; dot?: boolean; alert?: boolean; onPress(): void }) {
   return (
-    <Pressable onPress={props.onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}>
-      <Text style={styles.tileIcon}>{props.icon}</Text>
+    <Pressable onPress={props.onPress} style={({ pressed }) => [styles.tile, props.alert && styles.tileAlert, pressed && { transform: [{ scale: 0.96 }] }]}>
+      <Wiggle on={!!props.alert}>
+        <Image source={ICONS[props.icon]} style={styles.tileImg} />
+      </Wiggle>
       <Text style={styles.tileValue}>{props.value}</Text>
       <Text style={styles.tileLabel} numberOfLines={1}>
         {props.label}
       </Text>
-      {props.dot && <View style={styles.dot} />}
+      {props.alert ? (
+        <View style={styles.alert}>
+          <Text style={styles.alertText}>!</Text>
+        </View>
+      ) : (
+        props.dot && <View style={styles.dot} />
+      )}
     </Pressable>
   );
 }
@@ -217,8 +221,7 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 },
   offer: { backgroundColor: UI.gold, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
   offerText: { color: UI.bg, fontWeight: '900', fontSize: 15 },
-  hero: { alignItems: 'center', marginTop: 6 },
-  logo: { color: UI.text, fontSize: 40, fontWeight: '900', letterSpacing: 1, marginTop: -6 },
+  hero: { alignItems: 'center', marginTop: 4 },
 
   journey: { marginTop: 10, backgroundColor: UI.panel, borderRadius: 24, padding: 16, gap: 14, borderWidth: 2 },
   mapHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -256,8 +259,11 @@ const styles = StyleSheet.create({
   playSub: { color: 'rgba(15,27,45,0.7)', fontSize: 14, fontWeight: '800', marginTop: 0 },
 
   tiles: { flexDirection: 'row', gap: 12, marginTop: 14 },
-  tile: { flex: 1, backgroundColor: UI.panel, borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
-  tileIcon: { fontSize: 30 },
+  tile: { flex: 1, backgroundColor: UI.panel, borderRadius: 18, paddingVertical: 12, alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  tileAlert: { borderColor: UI.gold },
+  tileImg: { width: 52, height: 52 },
+  alert: { position: 'absolute', top: -8, right: -6, width: 30, height: 30, borderRadius: 15, backgroundColor: UI.danger, borderWidth: 3, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  alertText: { color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginTop: -2 },
   tileValue: { color: UI.text, fontSize: 22, fontWeight: '900', marginTop: 4 },
   tileLabel: { color: UI.dim, fontSize: 15, fontWeight: '700', marginTop: 2 },
   dot: { position: 'absolute', top: 8, right: 10, width: 14, height: 14, borderRadius: 7, backgroundColor: UI.danger, borderWidth: 2, borderColor: UI.panel },

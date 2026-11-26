@@ -8,6 +8,7 @@ import { UI } from '../game/palette';
 import { Progress } from '../game/storage';
 import { Key, t } from '../i18n';
 import CarArt from './CarArt';
+import { Showcase } from './Showcase';
 import { Btn, TabHeader } from './kit';
 import Sheet from './Sheet';
 
@@ -53,7 +54,7 @@ export default function GarageScreen({
     const fav = progress.favoriteCar === m.key;
     const price = m.special ? itemById(`garage:${m.key}`)?.price : 0;
     return (
-      <Pressable key={m.key} onPress={() => setOpen(m)} style={[styles.tile, { width: tile }, fav && styles.tileFav, fresh.includes(m.key) && styles.tileNew]}>
+      <Pressable key={m.key} onPress={() => setOpen(m)} style={[styles.tile, { width: tile }, unlocked && tierOf(m) !== 'common' && { borderColor: TIER_COLOR[tierOf(m)] + '99', backgroundColor: TIER_COLOR[tierOf(m)] + '1F' }, fav && styles.tileFav, fresh.includes(m.key) && styles.tileNew]}>
         {fresh.includes(m.key) && <Text style={styles.newBadge}>{t('market.new')}</Text>}
         <View style={{ height: tile * 0.5, justifyContent: 'center' }}>
           <CarArt model={m} width={tile - 28} silhouette={!unlocked && !m.special} />
@@ -131,7 +132,7 @@ function CarDetail(p: {
       <Text style={[styles.tier, { color: TIER_COLOR[tier], fontSize: 13 }]}>{t(`garage.tier.${tier}` as Key)}</Text>
       <Text style={styles.detailName}>{p.unlocked || p.m.special ? carName(p.m.key) : '???'}</Text>
       <View style={{ marginVertical: 18 }}>
-        <CarArt model={p.m} width={p.width} silhouette={!p.unlocked && !p.m.special} />
+        <Showcase model={p.m} width={p.width} silhouette={!p.unlocked && !p.m.special} glow={TIER_COLOR[tierOf(p.m)]} />
       </View>
       <Text style={styles.detailSub}>
         {p.m.special
