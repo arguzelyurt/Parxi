@@ -2,7 +2,7 @@
 
 Durum: **kodu yazıldı (26 Kasım 2026)**. Çalışması için aşağıdaki "Firebase konsol adımları" yapılmalı.
 
-Durum: **planlandı, geliştirilmedi.** Önce Parxi'de yapılacak, oturunca aynı yapı Glugo ve Floxi'ye taşınacak.
+Parxi'de oturunca aynı yapı Glugo ve Floxi'ye taşınacak. Henüz yapılmayan: ana sayfada 10. seviyeden sonra bir kezlik "hesap aç" önerisi.
 
 ## Amaç
 
