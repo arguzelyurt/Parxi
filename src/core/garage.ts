@@ -1,5 +1,5 @@
 // Garaj: seviyelere bağlı açılan araba modelleri. Görseller assets/cars/<key>.png
-// (özgün çizimler, scripts/make_cars.py ile üretilir). Model, `level` numaralı seviye
+// (768x384, sağa bakan, şeffaf arka plan; dışarıdan gelen görseller scripts/fit_car.py ile uyarlanır). Model, `level` numaralı seviye
 // bitirilince açılır (ilk model baştan açık). Güzel modeller bilerek ileri seviyelerde.
 
 export interface CarModel {
@@ -10,32 +10,32 @@ export interface CarModel {
 }
 
 export const CAR_MODELS: CarModel[] = [
-  { key: 'minik', level: 1 },
-  { key: 'sedan', level: 3 },
-  { key: 'taksi', level: 6 },
-  { key: 'pikap', level: 10 },
-  { key: 'minibus', level: 15 },
-  { key: 'jip', level: 20 },
-  { key: 'polis', level: 25 },
-  { key: 'ambulans', level: 30 },
-  { key: 'klasik', level: 40 },
-  { key: 'dondurma', level: 50 },
-  { key: 'karavan', level: 60 },
-  { key: 'okul', level: 70 },
-  { key: 'itfaiye', level: 80 },
-  { key: 'tir', level: 95 },
-  { key: 'cabrio', level: 110 },
-  { key: 'spor', level: 125 },
-  { key: 'limuzin', level: 140 },
-  { key: 'canavar', level: 160 },
-  { key: 'f1', level: 180 },
-  { key: 'super', level: 200 },
-  { key: 'roket', level: 230 },
-  { key: 'altin', level: 260 },
+  { key: 'altin', level: 1 },
+  { key: 'taksi', level: 3 },
+  { key: 'jip', level: 6 },
+  { key: 'sedan', level: 10 },
+  { key: 'golf', level: 15 },
+  { key: 'polis', level: 20 },
+  { key: 'dondurma', level: 25 },
+  { key: 'klasik', level: 30 },
+  { key: 'itfaiye', level: 40 },
+  { key: 'minibus', level: 50 },
+  { key: 'minik', level: 60 },
+  { key: 'karavan', level: 70 },
+  { key: 'cabrio', level: 80 },
+  { key: 'ambulans', level: 95 },
+  { key: 'okul', level: 110 },
+  { key: 'pikap', level: 125 },
+  { key: 'tir', level: 140 },
+  { key: 'super', level: 160 },
+  { key: 'limuzin', level: 180 },
+  { key: 'f1', level: 200 },
+  { key: 'canavar', level: 230 },
+  { key: 'future', level: 260 },
 ];
 
 /** Yalnız market'te coin ile alınan özel arabalar (market kimliği: 'garage:<key>') */
-export const SPECIAL_CARS: CarModel[] = ['elektrik', 'pizza', 'cop', 'safari', 'vincli', 'ralli', 'altintaksi', 'uzay'].map((key) => ({
+export const SPECIAL_CARS: CarModel[] = ['cop', 'pizza', 'safari', 'vincli', 'uzay', 'elektrik', 'ralli'].map((key) => ({
   key,
   level: 0,
   special: true,

@@ -432,9 +432,11 @@ def render(key, path, scale=1.0):
 if __name__ == '__main__':
     import os, sys
     ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # NOT: assets/cars artık dışarıdan gelen gerçekçi görselleri tutuyor. Bu betik yalnız
+    # açıkça istenen anahtarları oraya yazar: python3 scripts/make_cars.py --assets <ad> ...
     out = os.path.join(ROOT, 'assets', 'cars')
-    only = sys.argv[1:] or list(MODELS)
-    for k in only: render(k, os.path.join(out, f'{k}.png'), 0.8)
+    if sys.argv[1:2] == ['--assets']:
+        for k in sys.argv[2:]: render(k, os.path.join(out, f'{k}.png'), 0.8)
     os.makedirs('/home/claude/art/out', exist_ok=True)
     for k in MODELS: render(k, f'/home/claude/art/out/{k}.png')
     from PIL import Image

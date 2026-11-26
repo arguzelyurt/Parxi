@@ -198,7 +198,7 @@ export const tr = {
   'car.jip': 'Jip',
   'car.polis': 'Polis',
   'car.ambulans': 'Ambulans',
-  'car.klasik': 'Kaplumbağa',
+  'car.klasik': 'Klasik',
   'car.dondurma': 'Dondurmacı',
   'car.karavan': 'Karavan',
   'car.okul': 'Okul Otobüsü',
@@ -211,7 +211,7 @@ export const tr = {
   'car.f1': 'Yarış',
   'car.super': 'Süper',
   'car.roket': 'Roket Araba',
-  'car.altin': 'Altın Süper',
+  'car.altin': 'Altın Böcek',
 
   // Ayarlar
   'settings.title': 'Ayarlar',
@@ -344,7 +344,7 @@ export const tr = {
   'item.fx:balon': 'Balonlar',
   'item.fx:yildiz': 'Yıldız yağmuru',
   'item.fx:havai': 'Havai fişek',
-  'item.garage:elektrik': 'Elektrikli Mini',
+  'item.garage:elektrik': 'Elektrikli',
   'item.garage:pizza': 'Pizza Kuryesi',
   'item.garage:cop': 'Çöp Kamyonu',
   'item.garage:safari': 'Safari Jip',
@@ -352,7 +352,7 @@ export const tr = {
   'item.garage:ralli': 'Ralli',
   'item.garage:altintaksi': 'Altın Taksi',
   'item.garage:uzay': 'Uzay Gezgini',
-  'car.elektrik': 'Elektrikli Mini',
+  'car.elektrik': 'Elektrikli',
   'car.pizza': 'Pizza Kuryesi',
   'car.cop': 'Çöp Kamyonu',
   'car.safari': 'Safari Jip',
@@ -458,4 +458,6 @@ export const tr = {
   'settings.policyWeb': 'Web sayfasında aç',
   'time.h': 'sa',
   'time.m': 'dk',
+  'car.golf': 'Golf Arabası',
+  'car.future': 'Gelecek',
 };

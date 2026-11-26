@@ -200,7 +200,7 @@ export const en: Record<keyof typeof tr, string> = {
   'car.jip': 'Jeep',
   'car.polis': 'Police',
   'car.ambulans': 'Ambulance',
-  'car.klasik': 'Beetle',
+  'car.klasik': 'Classic',
   'car.dondurma': 'Ice Cream Van',
   'car.karavan': 'Camper',
   'car.okul': 'School Bus',
@@ -213,7 +213,7 @@ export const en: Record<keyof typeof tr, string> = {
   'car.f1': 'Racer',
   'car.super': 'Supercar',
   'car.roket': 'Rocket Car',
-  'car.altin': 'Golden Supercar',
+  'car.altin': 'Golden Bug',
 
   // Settings
   'settings.title': 'Settings',
@@ -346,7 +346,7 @@ export const en: Record<keyof typeof tr, string> = {
   'item.fx:balon': 'Balloons',
   'item.fx:yildiz': 'Star shower',
   'item.fx:havai': 'Fireworks',
-  'item.garage:elektrik': 'Electric Mini',
+  'item.garage:elektrik': 'Electric',
   'item.garage:pizza': 'Pizza Courier',
   'item.garage:cop': 'Garbage Truck',
   'item.garage:safari': 'Safari Jeep',
@@ -354,7 +354,7 @@ export const en: Record<keyof typeof tr, string> = {
   'item.garage:ralli': 'Rally Car',
   'item.garage:altintaksi': 'Golden Taxi',
   'item.garage:uzay': 'Space Cruiser',
-  'car.elektrik': 'Electric Mini',
+  'car.elektrik': 'Electric',
   'car.pizza': 'Pizza Courier',
   'car.cop': 'Garbage Truck',
   'car.safari': 'Safari Jeep',
@@ -460,4 +460,6 @@ export const en: Record<keyof typeof tr, string> = {
   'settings.policyWeb': 'Open web page',
   'time.h': 'h',
   'time.m': 'm',
+  'car.golf': 'Golf Cart',
+  'car.future': 'Future',
 };

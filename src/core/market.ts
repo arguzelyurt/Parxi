@@ -113,7 +113,6 @@ export const MARKET: MarketItem[] = [
   C('garage', 'safari', 2800, 'epic', NEW),
   C('garage', 'vincli', 3200, 'epic', NEW),
   C('garage', 'ralli', 4500, 'epic', NEW),
-  C('garage', 'altintaksi', 7000, 'legend', NEW),
   C('garage', 'uzay', 9000, 'legend', NEW),
 ];
 
