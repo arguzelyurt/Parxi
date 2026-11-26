@@ -1,5 +1,6 @@
 import React from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Text } from './Text';
 import app from '../../app.json';
 import { PRIVACY_URL, SUPPORT_EMAIL } from '../config';
 import { UI } from '../game/palette';
@@ -13,13 +14,25 @@ interface Props {
   onShop(): void;
   onRestore(): void;
   privacyOptions: (() => void) | null;
+  /** Girişli hesabın gösterilecek adı (yoksa null) */
+  accountLabel: string | null;
+  onAccount(): void;
 }
 
-export default function SettingsScreen({ progress, update, onShop, onRestore, privacyOptions }: Props) {
+export default function SettingsScreen({ progress, update, onShop, onRestore, privacyOptions, accountLabel, onAccount }: Props) {
   return (
     <View style={{ flex: 1 }}>
       <TabHeader title={t('settings.title')} coins={progress.coins} onCoins={onShop} />
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={kit.section}>{t('account.title')}</Text>
+        <Card onPress={onAccount} style={styles.accountCard}>
+          <Text style={styles.accountIcon}>{accountLabel ? '☁️' : '👤'}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={kit.cardTitle}>{accountLabel ?? t('account.cta')}</Text>
+            <Text style={kit.cardSub}>{accountLabel ? t('account.ctaIn') : t('account.ctaSub')}</Text>
+          </View>
+          <Text style={styles.chev}>›</Text>
+        </Card>
         <Text style={kit.section}>{t('settings.game')}</Text>
         <Card style={{ gap: 16 }}>
           <View>
@@ -120,6 +133,9 @@ function Row(props: { label: string; sub?: string; value: boolean; onChange(v: b
 }
 
 const styles = StyleSheet.create({
+  accountCard: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  accountIcon: { fontSize: 30 },
+  chev: { color: UI.dim, fontSize: 30, fontWeight: '300' },
   content: { paddingHorizontal: 24, paddingBottom: 24 },
   segment: { flexDirection: 'row', gap: 6, marginTop: 10 },
   segBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: UI.bg2, alignItems: 'center' },

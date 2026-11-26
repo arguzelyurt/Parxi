@@ -60,6 +60,30 @@ def wheels(cv, xs, y0, y1, h):
         cv.drawRRect(rrect(x - h * 0.13, y0 - h * 0.04, x + h * 0.13, y0 + h * 0.1, 4), paint('#14161E'))
         cv.drawRRect(rrect(x - h * 0.13, y1 - h * 0.1, x + h * 0.13, y1 + h * 0.04, 4), paint('#14161E'))
 
+# Üstü açık kabin: src/game/cabin.ts CABIN ile AYNI oranlar (görselin tamamına göre).
+CABIN = {'car': (0.22, 0.58, 0.19, 0.81), 'bus': (0.08, 0.83, 0.2, 0.8), 'truck': (0.06, 0.66, 0.19, 0.81)}
+CAPS = {'car': 4, 'bus': 6, 'truck': 8}
+
+def cabin(cv, kind, W, H, base):
+    """Saydam tavan: koyu cam pencere + kapasite kadar boş koltuk. Kenarlar aracın renginde kalır."""
+    a0, a1, b0, b1 = CABIN[kind]
+    x0, x1, y0, y1 = a0 * W, a1 * W, b0 * H, b1 * H
+    cw, ch = x1 - x0, y1 - y0
+    r = min(cw, ch) * 0.22
+    cv.drawRRect(rrect(x0, y0, x1, y1, r), paint(mix(base, .72, '#0C101C'), 245))
+    cv.drawRRect(rrect(x0, y0, x1, y1, r), paint(mix(base, .55), 200, stroke=1.6))
+    pad = max(2, ch * 0.08)
+    cols = CAPS[kind] // 2
+    cellW, cellH = (cw - pad * 2) / cols, (ch - pad * 2) / 2
+    seat = max(4, min(cellW * 0.8, cellH * 0.92))
+    for c in range(cols):
+        for rr in range(2):
+            cx = x0 + pad + cellW * (c + 0.5)
+            cy = y0 + pad + cellH * (rr + 0.5)
+            cv.drawRRect(rrect(cx - seat / 2, cy - seat / 2, cx + seat / 2, cy + seat / 2, seat * 0.26), paint(mix(base, .08, '#000000'), 255))
+            # sırtlık (arkada, sola doğru): yön belli olsun
+            cv.drawRRect(rrect(cx - seat / 2, cy - seat / 2, cx - seat * 0.22, cy + seat / 2, seat * 0.2), paint(mix(base, .45, '#000000'), 255))
+
 def wrap(cv, st, path, base, x0, y0, x1, y1, h):
     """Kaplama deseni, gövde yoluna kırpılmış; yalnız tabanın açık/koyu tonları."""
     if st not in WRAPS:
@@ -145,6 +169,7 @@ def draw(kind, c, style, hidden=False):
         roof = '#F4F1DE' if st == 'retro' else mix(base, .22)
         cv.drawRRect(rrect(x0 + L * 0.25, y0 + h * 0.16, x0 + L * 0.55, y1 - h * 0.16, h * 0.14), paint(roof))
         wrap(cv, st, skia.Path().addRRect(rrect(x0 + L * 0.25, y0 + h * 0.16, x0 + L * 0.55, y1 - h * 0.16, h * 0.14)), base, x0, y0, x1, y1, h)
+        if not hidden: cabin(cv, 'car', W, H, base)
         win = skia.Path(); win.moveTo(x0 + L * 0.57, y0 + h * 0.18); win.lineTo(x0 + L * 0.7, y0 + h * 0.1)
         win.lineTo(x0 + L * 0.7, y1 - h * 0.1); win.lineTo(x0 + L * 0.57, y1 - h * 0.18); win.close()
         p = paint(shader=glass_shader(y0, y1)); p.setPathEffect(skia.CornerPathEffect.Make(h * 0.08)); cv.drawPath(win, p)
@@ -167,10 +192,12 @@ def draw(kind, c, style, hidden=False):
         # yan camlar (iki kenarda şerit)
         for yy in (y0 + h * 0.04, y1 - h * 0.14):
             cv.drawRRect(rrect(x0 + L * 0.06, yy, x0 + L * 0.84, yy + h * 0.1, 3), paint(shader=glass_shader(y0, y1)))
-        # tavan menfezleri
-        for k in range(3):
-            xx = x0 + L * (0.18 + k * 0.22)
-            cv.drawRRect(rrect(xx, y0 + h * 0.36, xx + L * 0.1, y1 - h * 0.36, 4), paint(mix(base, .25, '#000000'), 140))
+        if hidden:
+            for k in range(3):  # tavan menfezleri (gizli araç kapalı kalır)
+                xx = x0 + L * (0.18 + k * 0.22)
+                cv.drawRRect(rrect(xx, y0 + h * 0.36, xx + L * 0.1, y1 - h * 0.36, 4), paint(mix(base, .25, '#000000'), 140))
+        else:
+            cabin(cv, 'bus', W, H, base)
         # geniş ön cam
         cv.drawRRect(rrect(x0 + L * 0.87, y0 + h * 0.1, x0 + L * 0.95, y1 - h * 0.1, h * 0.08), paint(shader=glass_shader(y0, y1)))
     else:  # tır: arkada dorse, önde kabin
@@ -185,6 +212,7 @@ def draw(kind, c, style, hidden=False):
             cv.drawLine(xx, y0 + h * 0.12, xx, y1 - h * 0.12, paint(mix(base, .3, '#000000'), 110, stroke=2))
         if st == 'retro':
             cv.drawRect(skia.Rect(x0 + L * 0.03, y0 + h * 0.44, cab_x - h * 0.1, y0 + h * 0.56), paint('#F4F1DE'))
+        if not hidden: cabin(cv, 'truck', W, H, base)
         cv.drawRect(skia.Rect(cab_x - h * 0.08, y0 + h * 0.35, cab_x + 2, y1 - h * 0.35), paint('#2A2F3B'))  # bağlantı
         cab = body_path(cab_x, y0, x1, y1, h * 0.12, h * 0.34)
         cv.drawPath(cab, paint(shader=body_shader(mix(base, .12, '#000000') if st != 'neon' else base, y0, y1, st)))

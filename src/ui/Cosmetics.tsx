@@ -2,7 +2,8 @@
 // Kural: yolcunun gövde rengi hep oyundaki renk; görünüm yalnız kafaya/aksesuara dokunur.
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, Text, View } from 'react-native';
+import { Animated, Easing, View } from 'react-native';
+import { Text } from './Text';
 import { COLORS } from '../game/palette';
 import { RiderSkin } from '../game/skins';
 

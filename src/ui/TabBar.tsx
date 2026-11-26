@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { UI } from '../game/palette';
 import { Key, t } from '../i18n';
 
@@ -48,13 +49,16 @@ const styles = StyleSheet.create({
   iconOn: { backgroundColor: UI.panelHi },
   icon: { color: UI.dim, fontSize: 22 },
   label: { color: UI.dim, fontSize: 13, fontWeight: '800' },
+  // Bildirim ışığı: kırmızı, kenarlıklı, ikonun köşesinde (gözden kaçmasın)
   dot: {
     position: 'absolute',
-    top: 2,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: UI.gold,
+    top: -1,
+    right: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: UI.danger,
+    borderWidth: 2,
+    borderColor: UI.bg2,
   },
 });

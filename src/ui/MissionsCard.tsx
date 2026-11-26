@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import {
   canClaimChest,
   canClaimMission,
@@ -40,7 +41,9 @@ export default function MissionsCard({ state, onClaim, onClaimChest }: Props) {
               </View>
             </View>
             {state.claimed[i] ? (
-              <Text style={styles.check}>✓</Text>
+              <View style={styles.taken}>
+                <Text style={styles.takenText}>✓ ● {m.reward}</Text>
+              </View>
             ) : (
               <Pressable
                 disabled={!claimable}
@@ -55,7 +58,13 @@ export default function MissionsCard({ state, onClaim, onClaimChest }: Props) {
           </View>
         );
       })}
-      {!state.chestClaimed && (
+      {state.chestClaimed ? (
+        <View style={[styles.chest, styles.chestTaken]}>
+          <Text style={[styles.chestText, { color: UI.accent }]}>
+            ✓ {t('missions.chest', { coins: MISSION_CHEST.coins, hint: MISSION_CHEST.hint })} · {t('reward.taken')}
+          </Text>
+        </View>
+      ) : (
         <Pressable
           disabled={!chestReady}
           onPress={onClaimChest}
@@ -84,7 +93,9 @@ const styles = StyleSheet.create({
   claim: { backgroundColor: UI.gold, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 64, alignItems: 'center' },
   claimOff: { backgroundColor: UI.bg },
   claimText: { color: UI.bg, fontWeight: '800', fontSize: 13 },
-  check: { color: UI.gold, fontSize: 20, fontWeight: '900', minWidth: 64, textAlign: 'center' },
+  taken: { backgroundColor: UI.bg2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 64, alignItems: 'center' },
+  takenText: { color: UI.accent, fontWeight: '900', fontSize: 13 },
+  chestTaken: { backgroundColor: UI.bg2 },
   chest: { borderRadius: 12, padding: 10, backgroundColor: UI.bg, alignItems: 'center' },
   chestReady: { backgroundColor: UI.gold },
   chestText: { color: UI.dim, fontSize: 13, fontWeight: '700', textAlign: 'center' },

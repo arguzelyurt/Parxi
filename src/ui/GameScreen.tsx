@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { useLayout } from './layout';
 import * as Haptics from 'expo-haptics';
 import {
@@ -39,7 +40,9 @@ const BOOSTER_ICON: Record<Booster, string> = { undo: '↶', hint: '💡', crane
 import { Booster, boosterName, ECONOMY } from '../core/monetization';
 import { Key, t } from '../i18n';
 import { COLORS, SYMBOLS, UI } from '../game/palette';
-import { Progress, SPEED_MS, todayUTC } from '../game/storage';
+import { Progress, SPEED_MS, todayUTC, trustedNow } from '../game/storage';
+import { spendLife } from '../core/lives';
+import { LivesPanel, LivesPill } from './Lives';
 import { Btn, TextLink } from './kit';
 import { CarStyle, carStyleFor, fxFor, RiderSkin, riderFor, stopFor, themeFor } from '../game/skins';
 import { HeadFront, HeadTop, StopBand, WinFx } from './Cosmetics';
@@ -95,6 +98,10 @@ interface Props {
   onExit(): void;
   /** Kazanma kartında ek düğme (ör. Günlük Otopark paylaş) */
   extraWinAction?: { label: string; onPress(r: WinResult): void };
+  /** Baştan başlamak / yarıda bırakmak can götürür mü (öğreticide hayır) */
+  lifeCost?: boolean;
+  /** Tekrar oynanan (geçilmiş) seviye */
+  replay?: boolean;
   /** İlk açılış öğreticisi (1. seviye) */
   tutorial?: boolean;
   onTutorialDone?(): void;
@@ -148,6 +155,9 @@ export default function GameScreen(props: Props) {
   const [now, setNow] = useState(Date.now());
   const [hintId, setHintId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  /** Can gerekiyor ama yok: can paneli; ardından yapılacak iş */
+  const [needLife, setNeedLife] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
   const [craneMode, setCraneMode] = useState(false);
   const [doubled, setDoubled] = useState(false);
   const [adBusy, setAdBusy] = useState(false);
@@ -351,8 +361,33 @@ export default function GameScreen(props: Props) {
     setLeaving([]);
   };
 
+  /** Bu deneme bırakılırsa can gider mi: hamle yapılmış ve kazanılmamışsa */
+  const attemptStarted = s.taps > 0 && s.status !== 'won';
+  /** 1 can harca; yoksa can panelini aç */
+  const payLife = (): boolean => {
+    if (props.lifeCost === false || props.tutorial) return true;
+    const next = spendLife(progress.lives, trustedNow(progress));
+    if (!next) {
+      setNeedLife(true);
+      return false;
+    }
+    update((p) => ({ ...p, lives: spendLife(p.lives, trustedNow(p)) ?? p.lives }));
+    return true;
+  };
+
+  const exit = () => {
+    if (busy) return;
+    if (attemptStarted && props.lifeCost !== false && !props.tutorial) setConfirmExit(true);
+    else props.onExit();
+  };
+
   const restart = () => {
     if (busy) return;
+    if (attemptStarted && !payLife()) return;
+    resetLevel();
+  };
+
+  const resetLevel = () => {
     setS(initialState(level));
     setHistory([]);
     setHintId(null);
@@ -469,16 +504,20 @@ export default function GameScreen(props: Props) {
     <SkinCtx.Provider value={skin}>
       <Pressable style={[styles.root, { backgroundColor: theme.bg }]} onPress={skipBoarding} disabled={!boarding}>
         <View style={styles.header}>
-          <Pressable onPress={props.onExit} hitSlop={12} disabled={busy} style={styles.headerSide}>
+          <Pressable onPress={exit} hitSlop={12} disabled={busy} style={styles.headerSide}>
             <Text style={styles.headerBtn}>{t('common.back')}</Text>
           </Pressable>
           <View style={{ alignItems: 'center' }}>
             <Text style={styles.title}>{heading}</Text>
             {level.hard && <Text style={styles.hard}>{t('game.hardTag')}</Text>}
+            {props.replay && <Text style={styles.replayTag}>{t('game.replayTag')}</Text>}
           </View>
-          <Pressable onPress={money.openShop} hitSlop={12} style={[styles.headerSide, { alignItems: 'flex-end' }]}>
-            <Text style={styles.coinText}>● {progress.coins} +</Text>
-          </Pressable>
+          <View style={[styles.headerSide, { alignItems: 'flex-end', gap: 4 }]}>
+            <Pressable onPress={money.openShop} hitSlop={12}>
+              <Text style={styles.coinText}>● {progress.coins} +</Text>
+            </Pressable>
+            {props.lifeCost !== false && <LivesPill lives={progress.lives} compact onPress={() => setNeedLife(true)} />}
+          </View>
         </View>
 
         {/* Durak: üstte bekleyen yolcular (öndeki en solda), altta araç yerleri */}
@@ -725,8 +764,36 @@ export default function GameScreen(props: Props) {
               <Btn label={t('game.rescueCrane', { cost: boosterLabel('crane') })} primary onPress={rescueByCrane} />
             )}
             <Btn label={t('game.undoCost', { cost: boosterLabel('undo') })} onPress={undo} />
-            <Btn label={t('game.restartFull')} onPress={restart} />
-            <TextLink label={t('common.home')} onPress={props.onExit} />
+            <Btn label={`${t('game.restartFull')}${props.lifeCost !== false && !props.tutorial ? '  ·  -1 ❤' : ''}`} onPress={restart} />
+            <TextLink label={t('common.home')} onPress={exit} />
+          </Overlay>
+        )}
+        {confirmExit && (
+          <Overlay>
+            <Text style={styles.overTitle}>{t('lives.exitTitle')}</Text>
+            <Text style={styles.overSub}>{t('lives.exitSub')}</Text>
+            <View style={{ height: 8 }} />
+            <Btn label={t('lives.keepPlaying')} primary onPress={() => setConfirmExit(false)} />
+            <Btn
+              label={t('lives.exitAnyway')}
+              onPress={() => {
+                setConfirmExit(false);
+                update((p) => ({ ...p, lives: spendLife(p.lives, trustedNow(p)) ?? p.lives }));
+                props.onExit();
+              }}
+            />
+          </Overlay>
+        )}
+        {needLife && (
+          <Overlay>
+            <LivesPanel
+              progress={progress}
+              update={update}
+              adAvailable={money.rewardedAvailable()}
+              watchAd={() => money.watchAd('lives')}
+              onShop={money.openShop}
+              onClose={() => setNeedLife(false)}
+            />
           </Overlay>
         )}
       </Pressable>
@@ -828,8 +895,8 @@ export function VehicleView(props: {
 const abs = { position: 'absolute' as const };
 
 /**
- * Duraktaki araç: tavanı saydam (koyu cam), içinde kapasite kadar koltuk; binen yolcu koltukta tepeden görünür.
- * Gövdenin kenarı, burnu ve farları kendi renginde kalır: cam, gövdenin içinde paylı bir pencere.
+ * Duraktaki araç: dik durur. Tavan ve koltuklar araç görselinde (bütün araçlar üstü açık);
+ * burada yalnız binen yolcular koltuklarının üstüne tepeden çizilir.
  */
 export function DockVehicle({ p, length: L, still }: { p: Parked; length: number; still?: boolean }) {
   const T = (L / lenOf(p.v)) * DOCK_THICKEN[p.v.kind];
@@ -855,10 +922,6 @@ export function DockVehicle({ p, length: L, still }: { p: Parked; length: number
           top: box.y0 * T,
           width: cw,
           height: ch,
-          borderRadius: Math.min(cw, ch) * 0.22,
-          backgroundColor: 'rgba(12,16,28,0.78)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.45)',
           padding: pad,
           flexDirection: 'row',
         }}
@@ -867,20 +930,7 @@ export function DockVehicle({ p, length: L, still }: { p: Parked; length: number
           <View key={c} style={{ width: cellW, height: cellH * g.rows }}>
             {Array.from({ length: g.rows }, (_, r) => (
               <View key={r} style={{ width: cellW, height: cellH, alignItems: 'center', justifyContent: 'center' }}>
-                {filled.has(`${c},${r}`) ? (
-                  <RiderTop color={p.v.color} size={seat} still={still} />
-                ) : (
-                  <View
-                    style={{
-                      width: seat * 0.82,
-                      height: seat * 0.82,
-                      borderRadius: seat * 0.22,
-                      backgroundColor: 'rgba(255,255,255,0.14)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(255,255,255,0.22)',
-                    }}
-                  />
-                )}
+                {filled.has(`${c},${r}`) && <RiderTop color={p.v.color} size={seat} still={still} />}
               </View>
             ))}
           </View>
@@ -1101,6 +1151,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   title: { color: UI.text, fontSize: 22, fontWeight: '900' },
   hard: { color: UI.danger, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  replayTag: { color: UI.accent, fontSize: 12, fontWeight: '800', marginTop: 2 },
   headerSide: { minWidth: 80 },
   headerBtn: { color: UI.dim, fontSize: 19, fontWeight: '700' },
   coinText: { color: UI.gold, fontWeight: '800', fontSize: 19 },

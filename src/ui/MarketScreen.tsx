@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import {
   BuyResult,
   collectionCount,
@@ -255,7 +256,9 @@ function GiftBanner({ gift, today, onClaim }: { gift: GiftState; today: string; 
       <View style={{ flex: 1 }}>
         <Text style={[styles.giftTitle, !can && { color: UI.text }]}>{t('market.gift')}</Text>
         <Text style={[styles.giftSub, !can && { color: UI.dim }]}>
-          {can ? `${t('market.giftSub', { n: streak })} · ${giftText(g)}` : t('market.giftDone')}
+          {can
+            ? `${t('market.giftSub', { n: streak })} · ${giftText(g)}`
+            : `✓ ${giftText(giftFor(gift.streak))} · ${t('reward.taken')}\n${t('market.giftDone')}: ${giftText(giftFor(gift.streak + 1))}`}
         </Text>
       </View>
       {can && (

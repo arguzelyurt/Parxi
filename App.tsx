@@ -59,9 +59,20 @@ import DailyScreen from './src/ui/DailyScreen';
 import SettingsScreen from './src/ui/SettingsScreen';
 import TabBar, { Tab } from './src/ui/TabBar';
 import { MAX_W } from './src/ui/layout';
-import { buyItem, BuyResult, claimGift, equipItem, openMysteryBox, Wallet } from './src/core/market';
+import { buyItem, BuyResult, claimGift, equipItem, MARKET_VERSION, openMysteryBox, Wallet } from './src/core/market';
+import { canPlay } from './src/core/lives';
+import { differs, mergeSaves } from './src/core/cloud';
+import { ECONOMY as ECO } from './src/core/monetization';
+import { dailyReady, mapHasNew, marketHasNew, missionsReady, newCars } from './src/game/badges';
+import { normalizeProgress } from './src/game/storage';
+import { Account, currentAccount, loadCloud, onAccountChanged, saveCloud } from './src/services/account';
+import AccountSheet from './src/ui/AccountSheet';
+import { LivesPanel } from './src/ui/Lives';
+import Sheet from './src/ui/Sheet';
+import { enableFonts } from './src/ui/Text';
+import { useFonts, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
 
-type Screen = { kind: 'tabs' } | { kind: 'level'; n: number } | { kind: 'daily'; key: string };
+type Screen = { kind: 'tabs' } | { kind: 'level'; n: number; replay?: boolean } | { kind: 'daily'; key: string };
 
 export default function App() {
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -69,6 +80,12 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'tabs' });
   const [tab, setTab] = useState<Tab>('home');
   const [, setAdsTick] = useState(0); // izin formu sonrası "gizlilik tercihleri" düğmesi için
+  const [livesOpen, setLivesOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [fontsLoaded, fontError] = useFonts({ Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black });
+  enableFonts(fontsLoaded && !fontError);
   const progressRef = useRef<Progress | null>(null);
   progressRef.current = progress;
 
@@ -156,10 +173,18 @@ export default function App() {
   // Oynanan seviye ekranda tutulur: kazanınca progress.level hemen artar, ama kazanma kartı açık kalır.
   const n = screen.kind === 'level' ? screen.n : (progress?.level ?? 1);
   const level = useMemo(() => levelFor(n), [n]);
-  const playLevel = useCallback(() => {
+  /** Seviyeye başla (n verilmezse sıradaki). Can yoksa can penceresi açılır. */
+  const playLevel = useCallback((at?: number) => {
     const p = progressRef.current;
-    if (p) setScreen({ kind: 'level', n: p.level });
+    if (!p) return;
+    if (!canPlay(p.lives, trustedNow(p)) && !(p.level === 1 && !p.tutorialDone)) {
+      setLivesOpen(true);
+      return;
+    }
+    const target = typeof at === 'number' ? Math.min(at, p.level) : p.level;
+    setScreen({ kind: 'level', n: target, replay: target < p.level });
   }, []);
+  const replay = screen.kind === 'level' && !!screen.replay;
   const today = dailyKey(new Date());
   const dailyKeyOpen = screen.kind === 'daily' ? screen.key : null;
   const daily = useMemo(() => (dailyKeyOpen ? dailyLevel(dailyKeyOpen) : null), [dailyKeyOpen]);
@@ -167,6 +192,12 @@ export default function App() {
   const onLevelWin = useCallback(
     (r: WinResult) =>
       update((p) => {
+        // Tekrar oynanan seviye: yalnız yeni kazanılan yıldızlar için coin, en iyi yıldız saklanır.
+        if (n < p.level) {
+          const old = p.stars[level.id] ?? 0;
+          const gained = Math.max(0, r.stars - old);
+          return { ...p, coins: p.coins + gained * ECO.perStar, stars: { ...p.stars, [level.id]: Math.max(r.stars, old) } };
+        }
         // Yalnız sıradaki seviye ödül verir ve ilerletir (aynı seviye iki kez ödül vermez).
         if (n !== p.level) return p;
         const coins = p.coins + coinsForLevel(r.stars, !!level.hard);
@@ -372,6 +403,11 @@ export default function App() {
   const onNext = useCallback(async () => {
     const p = progressRef.current;
     if (!p) return;
+    if (screen.kind === 'level' && screen.replay) {
+      setScreen({ kind: 'tabs' });
+      setTab('map');
+      return;
+    }
     const ads = rollDay(p.ads, todayUTC());
     const decision = shouldShowInterstitial(
       ads,
@@ -392,8 +428,14 @@ export default function App() {
       }
     }
     update((cur) => ({ ...cur, ads: after }));
+    if (!canPlay(p.lives, trustedNow(p))) {
+      setScreen({ kind: 'tabs' });
+      setTab('home');
+      setLivesOpen(true);
+      return;
+    }
     setScreen({ kind: 'level', n: p.level });
-  }, [update]);
+  }, [update, screen]);
 
   return (
     <SafeAreaProvider>
@@ -418,7 +460,7 @@ export default function App() {
                     <HomeScreen
                       progress={progress}
                       todayKey={today}
-                      onPlay={playLevel}
+                      onPlay={() => playLevel()}
                       onDaily={() => setTab('daily')}
                       onGarage={() => setTab('garage')}
                       onMap={() => setTab('map')}
@@ -426,10 +468,18 @@ export default function App() {
                       missions={ensureMissions(progress.missions, todayUTC())}
                       onClaimMission={claim}
                       onClaimChest={claimChest}
+                      onLives={() => setLivesOpen(true)}
+                      dots={{ garage: badges.garage, map: badges.map }}
                     />
                   )}
                   {tab === 'map' && (
-                    <MapScreen progress={progress} onPlay={playLevel} onShop={() => money.openShop()} />
+                    <MapScreen
+                      progress={progress}
+                      onPlay={() => playLevel()}
+                      onPlayLevel={(lv) => playLevel(lv)}
+                      onShop={() => money.openShop()}
+                      newFrom={mapSeenAtOpen}
+                    />
                   )}
                   {tab === 'daily' && (
                     <DailyScreen
@@ -457,6 +507,7 @@ export default function App() {
                       onShop={() => money.openShop()}
                       onFavorite={(key) => update((p) => ({ ...p, favoriteCar: key }))}
                       onMarket={() => setTab('market')}
+                      fresh={garageFresh}
                     />
                   )}
                   {tab === 'settings' && (
@@ -466,6 +517,8 @@ export default function App() {
                       onShop={() => money.openShop()}
                       onRestore={restore}
                       privacyOptions={Ads.needsPrivacyOptions() ? Ads.showPrivacyOptions : null}
+                      accountLabel={account ? (account.email ?? account.name ?? t(`account.via.${account.provider}`)) : null}
+                      onAccount={() => setAccountOpen(true)}
                     />
                   )}
                 </View>
@@ -473,7 +526,10 @@ export default function App() {
                   tab={tab}
                   onTab={setTab}
                   dots={{
-                    home: missionsClaimable || progress.daily.lastDoneKey !== today,
+                    home: badges.home,
+                    map: badges.map,
+                    market: badges.market,
+                    garage: badges.garage,
                   }}
                 />
               </View>
@@ -487,15 +543,18 @@ export default function App() {
                 progress={progress}
                 update={update}
                 money={money}
-                coinsFor={(stars) => coinsForLevel(stars, !!level.hard)}
+                coinsFor={(stars) =>
+                  replay ? Math.max(0, stars - (progress.stars[level.id] ?? 0)) * ECO.perStar : coinsForLevel(stars, !!level.hard)
+                }
                 onWin={onLevelWin}
-                newCar={carUnlockedAt(n)}
-                mapDone={mapCompletedAt(n)}
+                newCar={replay ? null : carUnlockedAt(n)}
+                mapDone={replay ? null : mapCompletedAt(n)}
+                replay={replay}
                 tutorial={n === 1 && !progress.tutorialDone}
                 onTutorialDone={() => update((p) => ({ ...p, tutorialDone: true }))}
                 intro={introFor(level, progress.seenIntro)}
                 onIntroSeen={seeIntro}
-                nextLabel={t('game.next')}
+                nextLabel={replay ? t('game.backToMap') : t('game.next')}
                 onNext={onNext}
                 onExit={() => setScreen({ kind: 'tabs' })}
               />
@@ -519,6 +578,32 @@ export default function App() {
                 onIntroSeen={seeIntro}
               />
             )}
+            <Sheet visible={livesOpen} onClose={() => setLivesOpen(false)}>
+              <LivesPanel
+                progress={progress}
+                update={update}
+                adAvailable={money.rewardedAvailable()}
+                watchAd={() => money.watchAd('lives')}
+                onShop={() => {
+                  setLivesOpen(false);
+                  money.openShop();
+                }}
+                onClose={() => setLivesOpen(false)}
+                onPlay={() => {
+                  setLivesOpen(false);
+                  playLevel();
+                }}
+              />
+            </Sheet>
+            <Sheet visible={accountOpen} onClose={() => setAccountOpen(false)}>
+              <AccountSheet
+                account={account}
+                syncedAt={progress.cloudSyncedAt}
+                syncing={syncing}
+                onSync={() => account && syncAccount(account, false)}
+                onClose={() => setAccountOpen(false)}
+              />
+            </Sheet>
             <ShopSheet
               visible={shopOpen}
               progress={progress}

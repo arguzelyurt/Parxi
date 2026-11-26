@@ -1,16 +1,33 @@
-import React, { useEffect, useRef } from 'react';
-import { Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { allMaps, MapInfo, mapOfLevel, mapReward } from '../core/maps';
 import { Booster } from '../core/monetization';
 import { UI } from '../game/palette';
 import { Progress } from '../game/storage';
 import { Key, t } from '../i18n';
-import { TabHeader } from './kit';
+import { Btn, TabHeader, TextLink } from './kit';
+import Sheet from './Sheet';
 
 const BOOSTER_ICON: Record<Booster, string> = { undo: '↶', hint: '💡', crane: '🏗', extraSlot: '＋' };
 
 /** Haritalar: tamamlananlar, şu anki (seviye noktalarıyla) ve kilitli olanlar. */
-export default function MapScreen({ progress, onPlay, onShop }: { progress: Progress; onPlay(): void; onShop(): void }) {
+export default function MapScreen({
+  progress,
+  onPlay,
+  onPlayLevel,
+  onShop,
+  newFrom,
+}: {
+  progress: Progress;
+  onPlay(): void;
+  /** Geçilmiş bir seviyeyi tekrar oyna */
+  onPlayLevel(n: number): void;
+  onShop(): void;
+  /** Bu seviyeden sonra açılanlar "yeni" (haritaya son bakıştan beri) */
+  newFrom: number;
+}) {
+  const [pick, setPick] = useState<number | null>(null);
   const current = mapOfLevel(progress.level).index;
   const maps = allMaps();
   const scroll = useRef<ScrollViewInstance>(null);
@@ -28,12 +45,46 @@ export default function MapScreen({ progress, onPlay, onShop }: { progress: Prog
           const state = m.index < current ? 'done' : m.index === current ? 'current' : 'locked';
           return (
             <View key={m.index} onLayout={(e) => m.index === current && (y.current = e.nativeEvent.layout.y)}>
-              <MapCard m={m} state={state} level={progress.level} stars={progress.stars} claimed={progress.mapsClaimed.includes(m.index)} onPlay={onPlay} />
+              <MapCard
+                m={m}
+                state={state}
+                level={progress.level}
+                stars={progress.stars}
+                claimed={progress.mapsClaimed.includes(m.index)}
+                onPlay={onPlay}
+                onPick={setPick}
+                newFrom={newFrom}
+              />
             </View>
           );
         })}
         <Text style={styles.more}>{t('map.more')}</Text>
       </ScrollView>
+      <Sheet visible={pick !== null} onClose={() => setPick(null)}>
+        {pick !== null && (
+          <>
+            <Text style={styles.sheetTitle}>{t('common.level', { n: pick })}</Text>
+            <Text style={styles.sheetStars}>
+              {'★'.repeat(progress.stars[`L${pick}`] ?? 0)}
+              <Text style={{ color: UI.panelHi }}>{'★'.repeat(3 - (progress.stars[`L${pick}`] ?? 0))}</Text>
+            </Text>
+            <Text style={styles.sheetSub}>
+              {(progress.stars[`L${pick}`] ?? 0) >= 3 ? t('map.replayPerfect') : t('map.replayMore')}
+            </Text>
+            <View style={{ height: 8 }} />
+            <Btn
+              label={t('map.replay')}
+              primary
+              onPress={() => {
+                const n = pick;
+                setPick(null);
+                onPlayLevel(n);
+              }}
+            />
+            <TextLink label={t('common.close')} onPress={() => setPick(null)} />
+          </>
+        )}
+      </Sheet>
     </View>
   );
 }
@@ -45,8 +96,12 @@ function MapCard(p: {
   stars: Record<string, number>;
   claimed: boolean;
   onPlay(): void;
+  onPick(n: number): void;
+  newFrom: number;
 }) {
   const { m, state } = p;
+  const [open, setOpen] = useState(state === 'current');
+  const isNewMap = state === 'current' && m.first > p.newFrom;
   const locked = state === 'locked';
   const doneLevels = state === 'done' ? m.size : state === 'current' ? p.level - m.first : 0;
   const reward = mapReward(m.index);
@@ -62,20 +117,34 @@ function MapCard(p: {
           </Text>
           <Text style={styles.range}>{t('map.levels', { a: m.first, b: m.last })}</Text>
         </View>
-        {state === 'done' && <Text style={styles.check}>✓</Text>}
+        {isNewMap && <Text style={styles.newBadge}>{t('market.new')}</Text>}
+        {state === 'done' && (
+          <Pressable onPress={() => setOpen((o) => !o)} hitSlop={10} style={styles.toggle}>
+            <Text style={styles.check}>✓</Text>
+            <Text style={styles.toggleText}>{open ? '▲' : '▼'}</Text>
+          </Pressable>
+        )}
       </View>
 
-      {state === 'current' && (
+      {!locked && open && (
         <View style={styles.path}>
           {Array.from({ length: m.size }, (_, i) => {
             const lv = m.first + i;
             const done = lv < p.level;
             const here = lv === p.level;
             const st = p.stars[`L${lv}`] ?? 0;
+            const fresh = here && lv > p.newFrom;
             return (
-              <View key={lv} style={[styles.node, done && { backgroundColor: m.color }, here && styles.nodeHere]}>
-                <Text style={[styles.nodeText, (done || here) && { color: UI.bg }]}>{done ? '★'.repeat(st) || '✓' : lv}</Text>
-              </View>
+              <Pressable
+                key={lv}
+                disabled={!done && !here}
+                onPress={() => (here ? p.onPlay() : p.onPick(lv))}
+                style={[styles.node, done && { backgroundColor: m.color }, here && styles.nodeHere]}
+              >
+                <Text style={[styles.nodeNum, (done || here) && { color: UI.bg }]}>{lv}</Text>
+                {done && <Text style={styles.nodeStars}>{'★'.repeat(st)}{'☆'.repeat(3 - st)}</Text>}
+                {fresh && <View style={styles.nodeDot} />}
+              </Pressable>
             );
           })}
         </View>
@@ -87,13 +156,13 @@ function MapCard(p: {
         </View>
       )}
 
-      <View style={styles.rewardRow}>
-        <Text style={styles.gift}>🎁</Text>
-        <Chip text={`● ${reward.coins}`} gold />
+      <View style={[styles.rewardRow, p.claimed && styles.rewardTaken]}>
+        <Text style={styles.gift}>{p.claimed ? '✅' : '🎁'}</Text>
+        <Chip text={`● ${reward.coins}`} gold={!p.claimed} />
         {(Object.keys(reward.boosters) as Booster[]).map((k) => (
           <Chip key={k} text={`${BOOSTER_ICON[k]} ${reward.boosters[k]}`} />
         ))}
-        {state === 'done' && p.claimed && <Text style={styles.claimed}>✓</Text>}
+        <Text style={[styles.rewardLabel, p.claimed && { color: UI.accent }]}>{p.claimed ? t('reward.taken') : t('reward.waiting')}</Text>
       </View>
 
       {state === 'current' && (
@@ -123,16 +192,25 @@ const styles = StyleSheet.create({
   range: { color: UI.dim, fontSize: 15, fontWeight: '700', marginTop: 2 },
   check: { color: UI.gold, fontSize: 30, fontWeight: '900' },
   path: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  node: { width: 46, height: 46, borderRadius: 23, backgroundColor: UI.bg, alignItems: 'center', justifyContent: 'center' },
+  node: { width: 52, height: 52, borderRadius: 26, backgroundColor: UI.bg, alignItems: 'center', justifyContent: 'center' },
   nodeHere: { backgroundColor: UI.text, transform: [{ scale: 1.12 }] },
-  nodeText: { color: UI.dim, fontWeight: '900', fontSize: 14 },
+  nodeNum: { color: UI.dim, fontWeight: '900', fontSize: 15, lineHeight: 18 },
+  nodeStars: { color: UI.bg, fontSize: 9, letterSpacing: -0.5, lineHeight: 11 },
+  nodeDot: { position: 'absolute', top: -2, right: -2, width: 14, height: 14, borderRadius: 7, backgroundColor: UI.danger, borderWidth: 2, borderColor: UI.panel },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  toggleText: { color: UI.dim, fontSize: 14, fontWeight: '900' },
+  newBadge: { backgroundColor: UI.danger, color: '#fff', fontSize: 12, fontWeight: '900', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' },
+  rewardTaken: { backgroundColor: UI.bg2, borderRadius: 14, padding: 8, opacity: 0.85 },
+  rewardLabel: { color: UI.gold, fontWeight: '900', fontSize: 14, marginLeft: 'auto' },
+  sheetTitle: { color: UI.text, fontSize: 26, fontWeight: '900' },
+  sheetStars: { color: UI.gold, fontSize: 34, letterSpacing: 4 },
+  sheetSub: { color: UI.dim, fontSize: 15, textAlign: 'center' },
   bar: { height: 10, borderRadius: 5, backgroundColor: UI.bg, overflow: 'hidden' },
   barFill: { height: 10, borderRadius: 5 },
   rewardRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   gift: { fontSize: 22 },
   chip: { backgroundColor: UI.bg, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
   chipText: { color: UI.text, fontWeight: '900', fontSize: 15 },
-  claimed: { color: UI.gold, fontWeight: '900', fontSize: 18 },
   play: { borderRadius: 16, paddingVertical: 15, alignItems: 'center' },
   playText: { color: UI.bg, fontWeight: '900', fontSize: 21 },
   more: { color: UI.dim, fontSize: 14, textAlign: 'center', marginTop: 6 },

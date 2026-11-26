@@ -350,3 +350,6 @@ export function claimGift(w: Wallet, g: GiftState, today: string): { wallet: Wal
   for (const [k, v] of Object.entries(got.boosters ?? {}) as [Booster, number][]) boosters[k] += v;
   return { wallet: { ...w, coins: w.coins + got.coins, boosters }, gift: { day: today, streak }, got };
 }
+
+/** Markete yeni ürün gelince artırılır: "yenilik var" ışığı yanar */
+export const MARKET_VERSION = 2;

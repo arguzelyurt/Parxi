@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { prevKey, streakAlive } from '../core/daily';
 import { ECONOMY } from '../core/monetization';
 import { UI } from '../game/palette';
@@ -42,6 +43,13 @@ export default function DailyScreen({ progress, todayKey, onPlay, onShop }: Prop
               {'★'.repeat(todayStars)}
               <Text style={{ color: UI.panelHi }}>{'★'.repeat(3 - todayStars)}</Text>
             </Text>
+          )}
+          {done && (
+            <View style={styles.taken}>
+              <Text style={styles.takenText}>
+                ✅ ● {ECONOMY.daily + (streak > 0 && streak % 7 === 0 ? ECONOMY.streak7Bonus : 0)} · {t('reward.taken')}
+              </Text>
+            </View>
           )}
           <Btn label={done ? t('daily.replay') : t('daily.play', { n: ECONOMY.daily })} onPress={onPlay} primary />
         </Card>
@@ -89,6 +97,8 @@ const styles = StyleSheet.create({
   hero: { marginTop: 8, gap: 4 },
   big: { color: UI.text, fontSize: 20, fontWeight: '800' },
   stars: { color: UI.gold, fontSize: 30, letterSpacing: 3, marginTop: 6 },
+  taken: { alignSelf: 'flex-start', backgroundColor: UI.bg2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, marginVertical: 6 },
+  takenText: { color: UI.accent, fontWeight: '900', fontSize: 15 },
   streakRow: { flexDirection: 'row', alignItems: 'center' },
   streakNum: { color: UI.gold, fontSize: 26, fontWeight: '900' },
   week: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },

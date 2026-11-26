@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { ECONOMY, PRODUCTS } from '../core/monetization';
 import { UI } from '../game/palette';
 import { ProductKey, starterOfferActive, STARTER_WINDOW_MS } from '../game/purchases';

@@ -1,6 +1,7 @@
 // Ortak parçalar: Glugo'daki düğme, kart ve başlık düzeni.
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Text } from './Text';
 import { UI } from '../game/palette';
 
 export function Btn(props: {

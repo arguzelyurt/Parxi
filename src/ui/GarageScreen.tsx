@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { useLayout } from './layout';
 import { CAR_MODELS, CarModel, nextCar, SPECIAL_CARS } from '../core/garage';
 import { itemById } from '../core/market';
@@ -28,7 +29,10 @@ export default function GarageScreen({
   onShop,
   onFavorite,
   onMarket,
+  fresh = [],
 }: {
+  /** Garaja yeni girmiş, henüz görülmemiş arabalar ("YENİ" rozeti) */
+  fresh?: string[];
   progress: Progress;
   onShop(): void;
   onFavorite(key: string): void;
@@ -49,7 +53,8 @@ export default function GarageScreen({
     const fav = progress.favoriteCar === m.key;
     const price = m.special ? itemById(`garage:${m.key}`)?.price : 0;
     return (
-      <Pressable key={m.key} onPress={() => setOpen(m)} style={[styles.tile, { width: tile }, fav && styles.tileFav]}>
+      <Pressable key={m.key} onPress={() => setOpen(m)} style={[styles.tile, { width: tile }, fav && styles.tileFav, fresh.includes(m.key) && styles.tileNew]}>
+        {fresh.includes(m.key) && <Text style={styles.newBadge}>{t('market.new')}</Text>}
         <View style={{ height: tile * 0.5, justifyContent: 'center' }}>
           <CarArt model={m} width={tile - 28} silhouette={!unlocked && !m.special} />
         </View>
@@ -164,6 +169,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   tileFav: { borderColor: UI.accent },
+  tileNew: { borderColor: UI.danger },
+  newBadge: { position: 'absolute', top: 8, left: 8, backgroundColor: UI.danger, color: '#fff', fontSize: 11, fontWeight: '900', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 7, overflow: 'hidden', zIndex: 2 },
   name: { color: UI.text, fontWeight: '800', fontSize: 15, marginTop: 8 },
   meta: { color: UI.gold, fontSize: 12, marginTop: 2 },
   tier: { fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 2 },

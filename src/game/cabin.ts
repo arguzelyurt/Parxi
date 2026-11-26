@@ -1,10 +1,10 @@
 import type { Kind } from '../core/rules';
 
-/** Durakta saydam tavanın aracın içindeki yeri (sağa bakan araç, oranlar 0..1). Çizimlere göre ayarlı. */
+/** Saydam tavanın (koltuklu kabin) görseldeki yeri (sağa bakan araç, oranlar 0..1). scripts/make_vehicles.py CABIN ile aynı. */
 export const CABIN: Record<Kind, { x0: number; x1: number; y0: number; y1: number }> = {
-  car: { x0: 0.24, x1: 0.66, y0: 0.17, y1: 0.83 },
-  bus: { x0: 0.07, x1: 0.84, y0: 0.16, y1: 0.84 },
-  truck: { x0: 0.05, x1: 0.66, y0: 0.14, y1: 0.86 },
+  car: { x0: 0.22, x1: 0.58, y0: 0.19, y1: 0.81 },
+  bus: { x0: 0.08, x1: 0.83, y0: 0.2, y1: 0.8 },
+  truck: { x0: 0.06, x1: 0.66, y0: 0.19, y1: 0.81 },
 };
 
 /** Durakta araç biraz daha kalın çizilir ki koltuklar seçilebilsin (otobüs ve tır ince görünmesin). */
