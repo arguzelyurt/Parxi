@@ -80,7 +80,8 @@ export function Showcase({ model, width, silhouette, glow = '#56CCF2' }: { model
   return (
     <View style={{ width, height: H, alignItems: 'center', overflow: 'hidden' }}>
       {/* spot ışığı */}
-      <View style={[styles.beam, { width: width * 0.7, height: H, left: width * 0.15, backgroundColor: glow }]} />
+      <View style={[styles.beam, { width: width * 0.78, height: width * 0.78, left: width * 0.11, top: carH * 0.5 - width * 0.39, backgroundColor: glow }]} />
+      <View style={[styles.beam, { width: width * 0.5, height: width * 0.5, left: width * 0.25, top: carH * 0.5 - width * 0.25, backgroundColor: glow, opacity: 0.1 }]} />
       {/* podyum */}
       <View style={[styles.podium, { width: width * 0.86, height: carH * 0.3, top: carH * 0.86, borderColor: glow }]} />
       <Animated.View style={[styles.podShadow, { width: width * 0.6, height: carH * 0.1, top: carH * 0.92, transform: [{ scaleX: shadowScale }] }]} />
@@ -88,14 +89,13 @@ export function Showcase({ model, width, silhouette, glow = '#56CCF2' }: { model
       <Animated.View style={{ position: 'absolute', top: carH * 0.08, transform: [{ translateY: float }] }}>
         <CarArt model={model} width={width * 0.9} silhouette={silhouette} />
       </Animated.View>
-      {/* zeminde yansıma */}
+      {/* zeminde yansıma: tekerlek hizasından aşağı, kısa ve silik */}
       {!silhouette && (
-        <Animated.View
-          style={{ position: 'absolute', top: carH * 0.72, opacity: 0.16, transform: [{ scaleY: -1 }, { translateY: float }] }}
-          pointerEvents="none"
-        >
-          <CarArt model={model} width={width * 0.9} />
-        </Animated.View>
+        <View pointerEvents="none" style={{ position: 'absolute', top: carH * 0.08 + carH * 0.9 * 0.82, height: carH * 0.22, width, overflow: 'hidden', alignItems: 'center', opacity: 0.14 }}>
+          <Animated.View style={{ marginTop: -carH * 0.9 * 0.18, transform: [{ scaleY: -1 }, { translateY: float }] }}>
+            <CarArt model={model} width={width * 0.9} />
+          </Animated.View>
+        </View>
       )}
       {!silhouette && sparkles.map((s, i) => <Sparkle key={i} x={s.x * width} y={s.y * carH} delay={s.d} />)}
     </View>
@@ -135,7 +135,7 @@ function Sparkle({ x, y, delay }: { x: number; y: number; delay: number }) {
 
 const styles = StyleSheet.create({
   letter: { fontWeight: '900', letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 4 } },
-  beam: { position: 'absolute', top: 0, opacity: 0.1, borderTopLeftRadius: 200, borderTopRightRadius: 200 },
+  beam: { position: 'absolute', opacity: 0.08, borderRadius: 999 },
   podium: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(86,204,242,0.14)', borderWidth: 2 },
   podShadow: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.45)' },
 });

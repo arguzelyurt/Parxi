@@ -316,7 +316,7 @@ function LevelNode(p: {
         </Text>
       )}
       {p.car && (
-        <View style={styles.carOnNode} pointerEvents="none">
+        <View style={[styles.carOnNode, { left: (size - 64) / 2 }]} pointerEvents="none">
           <CarArt model={carByKey(p.car)} width={64} />
         </View>
       )}
