@@ -6,8 +6,6 @@ import { dailyKey, dailyLevel, levelFor } from './src/core/generator';
 import { dailyShareText, nextStreak } from './src/core/daily';
 import {
   applyWin,
-  canClaimChest,
-  canClaimMission,
   claimMission,
   ensureMissions,
   MISSION_CHEST,
@@ -29,7 +27,7 @@ import {
 } from './src/core/monetization';
 import { UI } from './src/game/palette';
 import { themeFor } from './src/game/skins';
-import { resolveLang, setLang, t } from './src/i18n';
+import { Key, resolveLang, setLang, t } from './src/i18n';
 import { getLocales } from 'expo-localization';
 
 const deviceLang = (() => {
@@ -388,10 +386,110 @@ export default function App() {
     [update],
   );
 
-  const todayMissions = progress ? ensureMissions(progress.missions, todayUTC()) : null;
-  const missionsClaimable =
-    !!todayMissions &&
-    (todayMissions.missions.some((_, i) => canClaimMission(todayMissions, i)) || canClaimChest(todayMissions));
+
+  // ---------- Bildirim ışıkları ----------
+  const badges = {
+    home: !!progress && (missionsReady(progress) || dailyReady(progress, today)),
+    map: !!progress && mapHasNew(progress),
+    market: !!progress && marketHasNew(progress),
+    garage: !!progress && newCars(progress).length > 0,
+  };
+  // Harita/garaj açıkken "yeni" işaretleri görünsün; sekmeden çıkınca görüldü sayılır
+  const [mapSeenAtOpen, setMapSeenAtOpen] = useState(0);
+  const [garageFresh, setGarageFresh] = useState<string[]>([]);
+  const prevTab = useRef<Tab>('home');
+  useEffect(() => {
+    const p = progressRef.current;
+    if (!p || screen.kind !== 'tabs') return;
+    const prev = prevTab.current;
+    prevTab.current = tab;
+    if (prev === tab) return;
+    if (tab === 'map') setMapSeenAtOpen(p.seenMapLevel);
+    if (tab === 'garage') setGarageFresh(newCars(p));
+    if (prev === 'map') update((c) => ({ ...c, seenMapLevel: c.level }));
+    if (prev === 'garage') update((c) => ({ ...c, seenCars: [...new Set([...c.seenCars, ...newCars(c)])] }));
+    if (tab === 'market') update((c) => ({ ...c, marketSeenDay: todayUTC(), marketSeenVersion: MARKET_VERSION }));
+  }, [tab, screen.kind, update]);
+
+  // ---------- Hesap ve bulut kayıt ----------
+  const syncAccount = useCallback(
+    async (acc: Account, firstLogin: boolean) => {
+      const local = progressRef.current;
+      if (!local) return;
+      setSyncing(true);
+      try {
+        const raw = await loadCloud(acc.uid);
+        let next: Progress = local;
+        if (raw) {
+          const remote = normalizeProgress(raw);
+          const freshLocal = local.level <= 1 && Object.keys(local.stars).length === 0;
+          if (freshLocal) next = mergeSaves(remote, local);
+          else if (firstLogin && differs(local, remote)) {
+            const choice = await new Promise<'local' | 'remote'>((res) =>
+              Alert.alert(t('account.conflictTitle'), t('account.conflictBody'), [
+                { text: t('account.keepDevice', { n: local.level }), onPress: () => res('local') },
+                { text: t('account.keepCloud', { n: remote.level }), onPress: () => res('remote') },
+              ]),
+            );
+            const base = choice === 'local' ? local : remote;
+            const other = choice === 'local' ? remote : local;
+            // Seçilen kayıt kalır; satın almalar ve sahip olunan kozmetikler kaybolmaz
+            next = {
+              ...base,
+              processedPurchases: [...new Set([...base.processedPurchases, ...other.processedPurchases])],
+              owned: [...new Set([...base.owned, ...other.owned])],
+              skipRewarded: base.skipRewarded || other.skipRewarded,
+              ads: { ...base.ads, removeAds: base.ads.removeAds || other.ads.removeAds },
+            };
+          } else next = mergeSaves(local, remote);
+        }
+        const stamped = { ...next, cloudSyncedAt: Date.now() };
+        if (await saveCloud(acc.uid, stamped)) {
+          setProgress(stamped);
+          saveProgress(stamped);
+        }
+      } catch {
+        // çevrimdışı: sonra yeniden denenir
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [],
+  );
+
+  const accountUid = useRef<string | null>(null);
+  useEffect(() => {
+    if (!loaded) return;
+    const first = currentAccount();
+    setAccount(first);
+    accountUid.current = first?.uid ?? null;
+    if (first) syncAccount(first, false);
+    return onAccountChanged((a) => {
+      const was = accountUid.current;
+      accountUid.current = a?.uid ?? null;
+      setAccount(a);
+      if (a && a.uid !== was) {
+        setAccountOpen(false);
+        syncAccount(a, true);
+      }
+    });
+  }, [loaded, syncAccount]);
+
+  // Arka plana geçince ve her 5 seviyede bir buluta yaz
+  const lvl = progress?.level ?? 0;
+  useEffect(() => {
+    const acc = account;
+    if (!acc || lvl < 2 || lvl % 5 !== 0) return;
+    const p = progressRef.current;
+    if (p) saveCloud(acc.uid, p).then((ok) => ok && update((c) => ({ ...c, cloudSyncedAt: Date.now() })));
+  }, [lvl, account, update]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      const p = progressRef.current;
+      if (st === 'background' && account && p) saveCloud(account.uid, p);
+    });
+    return () => sub.remove();
+  }, [account]);
 
   const shareDaily = useCallback((key: string, r: WinResult) => {
     const p = progressRef.current;
@@ -517,7 +615,7 @@ export default function App() {
                       onShop={() => money.openShop()}
                       onRestore={restore}
                       privacyOptions={Ads.needsPrivacyOptions() ? Ads.showPrivacyOptions : null}
-                      accountLabel={account ? (account.email ?? account.name ?? t(`account.via.${account.provider}`)) : null}
+                      accountLabel={account ? (account.email ?? account.name ?? t(`account.via.${account.provider}` as Key)) : null}
                       onAccount={() => setAccountOpen(true)}
                     />
                   )}
