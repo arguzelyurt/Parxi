@@ -25,15 +25,15 @@ export const GEM_REWARD = {
 
 export const mapGems = (index: number): number => GEM_REWARD.mapBase + GEM_REWARD.mapPer * index;
 
-/** Elmasla alınanlar */
-export const GEM_COST = {
+/** Elmasla alınanlar (Remote Config yalnız PRICE_BOUNDS içinde değiştirebilir) */
+export const GEM_COST: Record<'continue' | 'infiniteLives' | 'shield' | 'repair' | 'coinX2', number> = {
   /** Tıkanınca +1 yer (seviye başına 1 kez) */
   continue: 15,
   infiniteLives: 20,
   shield: 40,
   repair: 120,
   coinX2: 25,
-} as const;
+};
 
 export const BOOST_MS = { infiniteLives: 30 * 60_000, coinX2: 15 * 60_000 } as const;
 /** Seri koruyucu en çok kaç tane birikir */
@@ -77,3 +77,37 @@ export function gemPriceFor(item: { kind: string; price: number; rarity: Rarity 
 
 /** Elmas kumbarası: her seviyede 1 elmas, 300'de dolar (satın alınca kırılır) */
 export const GEM_PIGGY = { perLevel: 1, cap: 300, unlockLevel: 30 } as const;
+
+/**
+ * Uzaktan fiyat ayarının güvenli aralıkları (Remote Config anahtarı → [en az, en çok]).
+ * Uzaktan gelen değer bu aralığa sıkıştırılır; aralık dışı ya da bozuk değer yok sayılır.
+ */
+export const PRICE_BOUNDS = {
+  price_continue: [10, 25],
+  price_infiniteLives: [15, 40],
+  price_shield: [30, 60],
+  price_repair: [80, 200],
+  price_coinX2: [15, 40],
+  price_bronze: [250, 800],
+  price_silver: [1, 4],
+  price_gold: [3, 8],
+} as const satisfies Record<string, readonly [number, number]>;
+
+const DEFAULTS = { gem: { ...GEM_COST }, chest: { bronze: 400, silver: 2, gold: 5 } };
+
+/** Remote Config değerlerini fiyatlara uygula (sınırlar içinde); hiç değer yoksa varsayılanlar */
+export function applyPriceConfig(remote: Record<string, unknown>): void {
+  const pick = (key: keyof typeof PRICE_BOUNDS, def: number): number => {
+    const raw = remote[key];
+    const v = Number(raw);
+    if (raw === undefined || raw === '' || raw === null || !Number.isFinite(v)) return def;
+    const [lo, hi] = PRICE_BOUNDS[key];
+    return Math.round(Math.min(hi, Math.max(lo, v)));
+  };
+  (Object.keys(DEFAULTS.gem) as (keyof typeof GEM_COST)[]).forEach((k) => {
+    GEM_COST[k] = pick(`price_${k}` as keyof typeof PRICE_BOUNDS, DEFAULTS.gem[k]);
+  });
+  CHEST_COST.bronze = { coins: pick('price_bronze', DEFAULTS.chest.bronze) };
+  CHEST_COST.silver = { tickets: pick('price_silver', DEFAULTS.chest.silver) };
+  CHEST_COST.gold = { tickets: pick('price_gold', DEFAULTS.chest.gold) };
+}

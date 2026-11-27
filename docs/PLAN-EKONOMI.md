@@ -134,7 +134,7 @@ Bütün sandıkların ve çarkın olasılıkları ekranda yazar (Apple kuralı 3
   - en çok alınan ürün
   - toplanmadan silinen görev oranı
   - sandık ve çark kullanımı
-- **Tek dosya:** Bütün fiyat ve ödüller `src/core/prices.ts` içinde. Remote Config yalnız güvenli aralıklar içinde ayar yapabilir (reklamdaki FAIR_BOUNDS gibi).
+- **Tek dosya:** Bütün fiyat ve ödüller `src/core/prices.ts` içinde. Remote Config yalnız güvenli aralıklar içinde ayar yapabilir (reklamdaki FAIR_BOUNDS gibi). **Yapıldı:** anahtarlar ve aralıklar `PRICE_BOUNDS`: `price_continue` 10–25, `price_infiniteLives` 15–40, `price_shield` 30–60, `price_repair` 80–200, `price_coinX2` 15–40, `price_bronze` 250–800 coin, `price_silver` 1–4 bilet, `price_gold` 3–8 bilet.
 
 ## Görevler
 - **Günlük:** 4 görev kalır. Biri "büyük görev" olur: daha zordur ve elmas verir.

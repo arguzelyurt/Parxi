@@ -1,11 +1,37 @@
 // Haritadaki küçük döngülü hareketler: zıplama, nabız, sallanma, yanıp sönme, kayma.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleProp, ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, StyleProp, ViewStyle } from 'react-native';
+
+// "Hareketi azalt" açıksa döngülü süs animasyonları durur (yerleşim aynı kalır).
+let reduceMotion = false;
+const listeners = new Set<(v: boolean) => void>();
+AccessibilityInfo.isReduceMotionEnabled?.()
+  .then((v) => {
+    reduceMotion = !!v;
+    listeners.forEach((f) => f(reduceMotion));
+  })
+  .catch(() => {});
+AccessibilityInfo.addEventListener?.('reduceMotionChanged', (v: boolean) => {
+  reduceMotion = !!v;
+  listeners.forEach((f) => f(reduceMotion));
+});
+
+export function useReduceMotion(): boolean {
+  const [v, set] = React.useState(reduceMotion);
+  useEffect(() => {
+    listeners.add(set);
+    return () => {
+      listeners.delete(set);
+    };
+  }, []);
+  return v;
+}
 
 function useLoop(make: (v: Animated.Value) => Animated.CompositeAnimation, on = true, delay = 0) {
   const v = useRef(new Animated.Value(0)).current;
+  const still = useReduceMotion();
   useEffect(() => {
-    if (!on) return;
+    if (!on || still) return;
     const loop = Animated.loop(make(v));
     const id = setTimeout(() => loop.start(), delay);
     return () => {
@@ -14,7 +40,7 @@ function useLoop(make: (v: Animated.Value) => Animated.CompositeAnimation, on = 
       v.setValue(0);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [on, delay]);
+  }, [on, delay, still]);
   return v;
 }
 

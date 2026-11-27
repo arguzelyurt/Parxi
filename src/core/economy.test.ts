@@ -8,7 +8,7 @@ import { localDay, localWeek, msToLocalMidnight, msToNextWeek, prevDay } from '.
 import { claimMission, ensureMissions, freshMissions, missionsFor } from './missions';
 import { mulberry32 } from './rng';
 import { mapReward, pendingSection, sectionOf, mapFirst } from './maps';
-import { gemPriceFor, GEM_COST, TRADE } from './prices';
+import { applyPriceConfig, CHEST_COST, gemPriceFor, GEM_COST, TRADE } from './prices';
 import { buyBoost, buyShield, claimSection, grantAdMoney, openChest, spin, streakAfterDaily, tradeGems, canRepairStreak, repairStreak, seeded } from '../game/economy';
 import { applyPurchase } from '../game/purchases';
 import type { Progress } from '../game/storage';
@@ -225,3 +225,14 @@ function base(over: Partial<Progress>): Progress {
     ...over,
   };
 }
+
+test('uzaktan fiyat ayarı güvenli aralıkta kalır', () => {
+  applyPriceConfig({ price_continue: 1, price_coinX2: 30, price_gold: 99, price_bronze: 'bozuk' });
+  assert.equal(GEM_COST.continue, 10);
+  assert.equal(GEM_COST.coinX2, 30);
+  assert.deepEqual(CHEST_COST.gold, { tickets: 8 });
+  assert.deepEqual(CHEST_COST.bronze, { coins: 400 });
+  applyPriceConfig({});
+  assert.equal(GEM_COST.continue, 15);
+  assert.deepEqual(CHEST_COST.gold, { tickets: 5 });
+});
