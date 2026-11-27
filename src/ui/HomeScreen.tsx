@@ -4,7 +4,7 @@ import { Text } from './Text';
 import { streakAlive } from '../core/daily';
 import { CAR_MODELS, carByKey, nextCar } from '../core/garage';
 import { isHardLevel } from '../core/generator';
-import { mapOfLevel } from '../core/maps';
+import { mapOfLevel, mapReward } from '../core/maps';
 import { canClaimChest, canClaimMission, MissionState } from '../core/missions';
 import { settleLives } from '../core/lives';
 import { UI } from '../game/palette';
@@ -13,7 +13,10 @@ import { Progress } from '../game/storage';
 import { Key, t } from '../i18n';
 import CarArt from './CarArt';
 import { carName, levelsDone } from './GarageScreen';
-import { Coins } from './kit';
+import { MoneyBar } from './kit';
+import { WeeklyState, weeklyReady } from '../core/weekly';
+import { coinX2Active, infiniteLivesActive } from '../game/economy';
+import { fmtMs } from './Lives';
 import { LivesPill, useNow } from './Lives';
 import { Wiggle } from './MissionsPanel';
 import { AnimatedLogo, Showcase } from './Showcase';
@@ -29,6 +32,7 @@ interface Props {
   onShop(): void;
   onLives(): void;
   missions: MissionState;
+  weekly: WeeklyState;
   onMissions(): void;
   /** Bildirim ışıkları */
   dots: { garage: boolean; map: boolean };
@@ -53,9 +57,11 @@ export default function HomeScreen(p: Props) {
   const toCar = car ? car.level - n + 1 : 0;
   const m = p.missions;
   const missionsDone = m.claimed.filter(Boolean).length;
-  const missionReady = m.missions.some((_, i) => canClaimMission(m, i)) || canClaimChest(m);
+  const missionReady = m.missions.some((_, i) => canClaimMission(m, i)) || canClaimChest(m) || weeklyReady(p.weekly);
+  const x2 = coinX2Active(progress, now);
+  const inf = infiniteLivesActive(progress, now);
   const starter = starterOfferActive(progress, now);
-  const lives = settleLives(progress.lives, now).count;
+  const lives = infiniteLivesActive(progress, now) ? 5 : settleLives(progress.lives, now).count;
   const hard = isHardLevel(n);
 
   // Yol: geçilen son 2 seviye, şu anki, sonraki 3
@@ -83,11 +89,11 @@ export default function HomeScreen(p: Props) {
             <Text style={styles.offerText}>🎁 {t('home.starterTitle')}</Text>
           </Pressable>
         ) : (
-          <LivesPill lives={progress.lives} onPress={p.onLives} />
+          <LivesPill lives={progress.lives} compact infiniteUntil={progress.boosts.infiniteLivesUntil} onPress={p.onLives} />
         )}
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          {starter && <LivesPill lives={progress.lives} compact onPress={p.onLives} />}
-          <Coins coins={progress.coins} onPress={p.onShop} />
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+          {starter && <LivesPill lives={progress.lives} compact infiniteUntil={progress.boosts.infiniteLivesUntil} onPress={p.onLives} />}
+          <MoneyBar money={progress} small />
         </View>
       </View>
 
@@ -143,7 +149,10 @@ export default function HomeScreen(p: Props) {
         </View>
 
         <View style={styles.goals}>
-          <Goal icon="🎁" text={toMapEnd <= 1 ? t('home.goalMapNow') : t('home.goalMap', { n: toMapEnd })} />
+          <Goal
+            icon="🎁"
+            text={`${toMapEnd <= 1 ? t('home.goalMapNow') : t('home.goalMap', { n: toMapEnd })}  +${mapReward(map.index).gems}💎`}
+          />
           {car && (
             <Goal
               icon="🚗"
@@ -152,6 +161,8 @@ export default function HomeScreen(p: Props) {
             />
           )}
           {hard && <Goal icon="⚡" text={t('home.goalHard')} hot />}
+          {x2 && <Goal icon="✖2" text={`${t('home.x2On')} · ${fmtMs(progress.boosts.coinX2Until - now)}`} hot />}
+          {inf && <Goal icon="♾️" text={`${t('home.infOn')} · ${fmtMs(progress.boosts.infiniteLivesUntil - now)}`} />}
         </View>
 
         <Animated.View style={{ transform: [{ scale: lives > 0 ? scale : 1 }] }}>
@@ -173,9 +184,9 @@ export default function HomeScreen(p: Props) {
         <Tile icon="missions" label={t('home.missions')} value={`${missionsDone}/${m.missions.length}`} alert={missionReady} onPress={p.onMissions} />
       </View>
 
-      {progress.level > 30 && progress.piggy >= 300 && (
+      {progress.level > 30 && progress.piggy >= 100 && (
         <Pressable onPress={p.onShop} style={styles.piggy}>
-          <Text style={styles.piggyText}>🐷 {progress.piggy}</Text>
+          <Text style={styles.piggyText}>🐷 {progress.piggy} 💎</Text>
         </Pressable>
       )}
 

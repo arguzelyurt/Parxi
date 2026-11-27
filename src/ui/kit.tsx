@@ -1,7 +1,8 @@
 // Ortak parçalar: Glugo'daki düğme, kart ve başlık düzeni.
-import React, { useRef } from 'react';
+import React, { createContext, useContext, useRef } from 'react';
 import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
-import { useFlyCoins, ViewRef } from './FlyCoins';
+import { FlyKind, useFlyCoins, ViewRef } from './FlyCoins';
+import { num } from '../i18n';
 import { ICONS } from './icons';
 import { Text } from './Text';
 import { UI } from '../game/palette';
@@ -43,32 +44,65 @@ export function TextLink({ label, onPress }: { label: string; onPress(): void })
   );
 }
 
-/** Coin sayacı: uçan coinlerin hedefi; coin gelince zıplar */
-export function Coins({ coins, onPress }: { coins: number; onPress(): void }) {
+/** Para sayaçlarının "+" düğmesi nereye gider (App sağlar): coin/elmas → Market Elmas, bilet → Sandıklar */
+export const MoneyNav = createContext<((kind: FlyKind) => void) | null>(null);
+export const useMoneyNav = () => useContext(MoneyNav);
+
+export interface Money3 {
+  coins: number;
+  gems: number;
+  tickets: number;
+}
+
+const PILL_ICON: Record<FlyKind, keyof typeof ICONS> = { coins: 'coin', gems: 'gem', tickets: 'ticket' };
+const PILL_COLOR: Record<FlyKind, string> = { coins: UI.gold, gems: '#9FD0FF', tickets: '#8FF0B4' };
+
+/** Tek para sayacı: uçan paraların hedefi; para gelince zıplar */
+export function Pill({ kind, value, onPress, small }: { kind: FlyKind; value: number; onPress?(): void; small?: boolean }) {
   const fly = useFlyCoins();
+  const nav = useMoneyNav();
   const ref = useRef<ViewRef>(null);
-  const scale = fly ? fly.bump.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) : 1;
+  const scale = fly ? fly.bumps[kind].interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) : 1;
+  const press = onPress ?? (nav ? () => nav(kind) : undefined);
   return (
-    <Pressable onPress={onPress} hitSlop={12}>
+    <Pressable onPress={press} disabled={!press} hitSlop={6}>
       <Animated.View
         ref={ref}
-        onLayout={() => fly?.setTarget(ref.current)}
-        style={[styles.coinPill, { transform: [{ scale }] }]}
+        onLayout={() => fly?.setTarget(ref.current, kind)}
+        style={[styles.coinPill, small && styles.pillSmall, { transform: [{ scale }] }]}
       >
-        <Image source={ICONS.coin} style={styles.coinIcon} />
-        <Text style={styles.coins}>{coins}</Text>
-        <Text style={styles.coinPlus}>+</Text>
+        <Image source={ICONS[PILL_ICON[kind]]} style={small ? styles.iconSmall : styles.coinIcon} />
+        <Text style={[styles.coins, { color: PILL_COLOR[kind] }, small && { fontSize: 15 }]}>{num(value)}</Text>
+        {press && !small && <Text style={styles.coinPlus}>+</Text>}
       </Animated.View>
     </Pressable>
   );
 }
 
-/** Sekme ekranlarının üst başlığı: solda başlık, sağda coin */
-export function TabHeader({ title, coins, onCoins }: { title: string; coins: number; onCoins(): void }) {
+/** Coin sayacı (oyun ekranı gibi dar yerler) */
+export function Coins({ coins, onPress }: { coins: number; onPress?(): void }) {
+  return <Pill kind="coins" value={coins} onPress={onPress} />;
+}
+
+/** Üç para yan yana: coin, elmas, bilet */
+export function MoneyBar({ money, small }: { money: Money3; small?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
+      <Pill kind="coins" value={money.coins} small={small} />
+      <Pill kind="gems" value={money.gems} small={small} />
+      <Pill kind="tickets" value={money.tickets} small={small} />
+    </View>
+  );
+}
+
+/** Sekme ekranlarının üst başlığı: solda başlık, sağda üç para */
+export function TabHeader({ title, money }: { title: string; money: Money3 }) {
   return (
     <View style={styles.tabHeader}>
-      <Text style={styles.tabTitle}>{title}</Text>
-      <Coins coins={coins} onPress={onCoins} />
+      <Text style={styles.tabTitle} numberOfLines={1}>
+        {title}
+      </Text>
+      <MoneyBar money={money} small />
     </View>
   );
 }
@@ -102,17 +136,20 @@ const styles = StyleSheet.create({
   btnText: { color: UI.text, fontSize: 19, fontWeight: '800', textAlign: 'center' },
   link: { color: UI.dim, fontSize: 16, textDecorationLine: 'underline' },
   coins: { color: UI.gold, fontSize: 20, fontWeight: '900' },
-  coinPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: UI.panel, borderRadius: 16, paddingLeft: 6, paddingRight: 4, paddingVertical: 4 },
+  coinPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: UI.panel, borderRadius: 16, paddingLeft: 5, paddingRight: 4, paddingVertical: 4 },
+  pillSmall: { paddingRight: 9, gap: 4, paddingVertical: 3 },
   coinIcon: { width: 24, height: 24 },
+  iconSmall: { width: 20, height: 20 },
   coinPlus: { color: UI.bg, backgroundColor: UI.accent, fontSize: 16, fontWeight: '900', width: 22, height: 22, borderRadius: 11, textAlign: 'center', lineHeight: 22, overflow: 'hidden' },
   tabHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    gap: 8,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
   },
-  tabTitle: { color: UI.text, fontSize: 30, fontWeight: '900' },
+  tabTitle: { color: UI.text, fontSize: 26, fontWeight: '900', flexShrink: 1 },
   card: { backgroundColor: UI.panel, borderRadius: 18, padding: 16 },
 });

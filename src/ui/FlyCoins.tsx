@@ -1,5 +1,6 @@
-// Ödül animasyonu: coinler basılan yerden çıkıp üstteki coin sayacına uçar, sayaç zıplar.
-// Kullanım: const fly = useFlyCoins(); fly(fromRef, miktar, () => kaydet())
+// Ödül animasyonu: paralar basılan yerden çıkıp üstteki kendi sayacına uçar, sayaç zıplar.
+// Kullanım: const fly = useFlyCoins(); fly(fromRef, miktar, () => kaydet(), 'gems')
+// Coin, elmas ve bilet ayrı hedeflere uçar; görünürde sayaç yoksa (ör. oyun ekranı) coin sayacına.
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { Animated, Easing, Image, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -8,20 +9,24 @@ import { ICONS } from './icons';
 type Pt = { x: number; y: number };
 /** Ölçülebilen görünümün örneği (RN 0.88: ReactNativeElement) */
 export type ViewRef = React.ComponentRef<typeof View>;
+export type FlyKind = 'coins' | 'gems' | 'tickets';
+const IMG: Record<FlyKind, keyof typeof ICONS> = { coins: 'coin', gems: 'gem', tickets: 'ticket' };
 interface Flight {
   id: number;
   from: Pt;
   to: Pt;
   count: number;
+  kind: FlyKind;
 }
 
 interface Ctx {
   /** `from` ölçülebilen bir görünüm (ref) ya da ekran noktası; bitince onDone */
-  fly(from: ViewRef | Pt | null, amount: number, onDone?: () => void): void;
-  /** Coin sayacı kendini hedef olarak kaydeder */
-  setTarget(v: ViewRef | null): void;
+  fly(from: ViewRef | Pt | null, amount: number, onDone?: () => void, kind?: FlyKind): void;
+  /** Sayaç kendini hedef olarak kaydeder (varsayılan: coin) */
+  setTarget(v: ViewRef | null, kind?: FlyKind): void;
   /** Sayaç "zıplama" değeri (0→1→0) */
   bump: Animated.Value;
+  bumps: Record<FlyKind, Animated.Value>;
 }
 
 const FlyCtx = createContext<Ctx | null>(null);
@@ -38,43 +43,48 @@ const measure = (v: ViewRef): Promise<Pt | null> =>
   });
 
 export function FlyCoinsProvider({ children }: { children: React.ReactNode }) {
-  const target = useRef<ViewRef | null>(null);
-  const bump = useRef(new Animated.Value(0)).current;
+  const targets = useRef<Partial<Record<FlyKind, ViewRef | null>>>({});
+  const bumps = useRef({ coins: new Animated.Value(0), gems: new Animated.Value(0), tickets: new Animated.Value(0) }).current;
+  const bump = bumps.coins;
   const [flights, setFlights] = useState<Flight[]>([]);
   const nextId = useRef(1);
 
   const fly = useCallback<Ctx['fly']>(
-    async (from, amount, onDone) => {
+    async (from, amount, onDone, kind = 'coins') => {
       const start = from && 'measureInWindow' in from ? await measure(from as ViewRef) : (from as Pt | null);
-      const end = target.current ? await measure(target.current) : null;
+      const own = targets.current[kind];
+      let end = own ? await measure(own) : null;
+      if (!end && targets.current.coins) end = await measure(targets.current.coins);
       if (!start || !end) {
         onDone?.();
         return;
       }
-      const count = Math.max(5, Math.min(12, Math.round(amount / 6)));
+      const count = kind === 'coins' ? Math.max(5, Math.min(12, Math.round(amount / 6))) : Math.max(3, Math.min(10, amount));
       const id = nextId.current++;
-      setFlights((f) => [...f, { id, from: start, to: end, count }]);
+      const to = end;
+      setFlights((f) => [...f, { id, from: start, to, count, kind }]);
+      const b = bumps[kind];
       // Coinler varınca: kaydet, sayaç zıplasın
       setTimeout(() => {
         onDone?.();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        bump.setValue(0);
+        b.setValue(0);
         Animated.sequence([
-          Animated.timing(bump, { toValue: 1, duration: 140, useNativeDriver: true }),
-          Animated.spring(bump, { toValue: 0, friction: 4, useNativeDriver: true }),
+          Animated.timing(b, { toValue: 1, duration: 140, useNativeDriver: true }),
+          Animated.spring(b, { toValue: 0, friction: 4, useNativeDriver: true }),
         ]).start();
       }, 820);
       setTimeout(() => setFlights((f) => f.filter((x) => x.id !== id)), 1400);
     },
-    [bump],
+    [bumps],
   );
 
-  const setTarget = useCallback((v: ViewRef | null) => {
-    if (v) target.current = v;
+  const setTarget = useCallback((v: ViewRef | null, kind: FlyKind = 'coins') => {
+    if (v) targets.current[kind] = v;
   }, []);
 
   return (
-    <FlyCtx.Provider value={{ fly, setTarget, bump }}>
+    <FlyCtx.Provider value={{ fly, setTarget, bump, bumps }}>
       {children}
       <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}>
         {flights.map((f) => (
@@ -124,7 +134,7 @@ function Burst({ f }: { f: Flight }) {
               transform: [{ translateX: tx }, { translateY: ty }, { scale: sc }],
             }}
           >
-            <Image source={ICONS.coin} style={{ width: S, height: S }} />
+            <Image source={ICONS[IMG[f.kind]]} style={{ width: S, height: S }} />
           </Animated.View>
         );
       })}

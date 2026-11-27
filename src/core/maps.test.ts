@@ -23,9 +23,10 @@ test('seviyenin haritası ve tamamlanma', () => {
 
 test('ödüller büyür ve bir kez verilir', () => {
   for (let i = 1; i < MAP_COUNT; i++) assert.ok(mapReward(i).coins > mapReward(i - 1).coins);
-  const p = { coins: 0, boosters: { undo: 0, hint: 0, crane: 0, extraSlot: 0 }, mapsClaimed: [] as number[] };
+  const p = { coins: 0, gems: 0, boosters: { undo: 0, hint: 0, crane: 0, extraSlot: 0 }, mapsClaimed: [] as number[] };
   const a = claimMap(p, 4);
   assert.equal(a.coins, mapReward(4).coins);
+  assert.equal(a.gems, 18);
   assert.equal(a.boosters.extraSlot, 1);
   assert.equal(claimMap(a, 4), a);
 });

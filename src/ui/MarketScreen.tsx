@@ -39,24 +39,46 @@ import { StopBand, WinFx } from './Cosmetics';
 import CarArt from './CarArt';
 import { TIER_COLOR } from './GarageScreen';
 import { useLayout } from './layout';
-import { Btn, TabHeader } from './kit';
+import { Btn, Money3, TabHeader } from './kit';
 import Sheet from './Sheet';
+import { ChestsPage, GemsPage, PriceTag } from './MarketExtras';
+import type { Reward } from '../core/chests';
+import { ChestKind, gemPriceFor } from '../core/prices';
+import { PRODUCTS } from '../core/monetization';
+import { ICONS } from './icons';
+import { Image } from 'react-native';
 
+export type MarketPage = 'chests' | 'gems';
 interface Props {
   wallet: Wallet;
+  money: Money3;
   gift: GiftState;
   today: string;
-  /** Satın al (günün fırsatı fiyatıyla); sonucu döner */
-  onBuy(id: string): BuyResult;
+  /** Açılışta gösterilecek sayfa (para sayaçlarının "+" düğmesi) */
+  page?: MarketPage | null;
+  /** Satın al (günün fırsatı fiyatıyla; gems: elmasla); sonucu döner */
+  onBuy(id: string, gems?: boolean): BuyResult;
   onEquip(id: string): void;
   onGift(): Gift | null;
-  onMystery(): { item: MarketItem; setBonus: number } | null;
+  onMystery(): Reward | null;
+  onChest(kind: ChestKind): Reward | null;
+  wheelFree: boolean;
+  onSpin(): number | null;
+  adLeft: number;
+  adAvailable: boolean;
+  onAdMoney(kind: 'coins' | 'tickets'): Promise<boolean>;
+  now: number;
+  starter: boolean;
+  boosts: { infiniteLivesUntil: number; coinX2Until: number };
+  shields: number;
+  onIap(key: keyof typeof PRODUCTS): void;
+  onGem(kind: 'infiniteLives' | 'coinX2' | 'shield' | 'trade'): boolean;
   /** Coin yetmeyince gerçek para dükkanı */
   onOpenShop(): void;
 }
 
-type Cat = Exclude<ItemKind, never>;
-const CATS: { kind: Cat; icon: string }[] = [
+type Cat = Exclude<ItemKind, never> | MarketPage;
+const CATS: { kind: ItemKind; icon: string }[] = [
   { kind: 'booster', icon: '⚡' },
   { kind: 'garage', icon: '🚙' },
   { kind: 'car', icon: '🎨' },
@@ -65,7 +87,7 @@ const CATS: { kind: Cat; icon: string }[] = [
   { kind: 'stop', icon: '🚏' },
   { kind: 'fx', icon: '🎆' },
 ];
-const catTitle = (k: Cat) => (k === 'car' ? t('market.cat.car') : t(`market.tab.${k}` as Key));
+const catTitle = (k: Cat) => (k === 'car' ? t('market.cat.car') : k === 'chests' ? t('market.chests') : k === 'gems' ? t('money.gems') : t(`market.tab.${k}` as Key));
 const BOOSTERS: Booster[] = ['undo', 'hint', 'crane', 'extraSlot'];
 const BOOSTER_ICON: Record<string, string> = { undo: '↶', hint: '💡', crane: '🏗', extraSlot: '＋' };
 const ITEM_ICON: Partial<Record<string, string>> = {
@@ -99,9 +121,8 @@ export default function MarketScreen(props: Props) {
   const { wallet, today } = props;
   const { width: screenW } = useLayout();
   const catW = Math.floor((screenW - 48 - 20) / 3);
-  const [cat, setCat] = useState<Cat | null>(null);
+  const [cat, setCat] = useState<Cat | null>(props.page ?? null);
   const [now, setNow] = useState(Date.now());
-  const [boxOpen, setBoxOpen] = useState(false);
   const [toast, setToast] = useState<{ title: string; sub?: string; item?: MarketItem } | null>(null);
 
   useEffect(() => {
@@ -114,10 +135,10 @@ export default function MarketScreen(props: Props) {
 
   const deals = useMemo(() => dailyDeals(today), [today]);
 
-  const buy = (item: MarketItem) => {
-    const price = priceFor(wallet, item, today);
-    if (wallet.coins < price) return props.onOpenShop();
-    const r = props.onBuy(item.id);
+  const buy = (item: MarketItem, gems?: boolean) => {
+    const price = gems ? (gemPriceFor(item) ?? 0) : priceFor(wallet, item, today);
+    if ((gems ? wallet.gems : wallet.coins) < price) return gems ? setCat('gems') : props.onOpenShop();
+    const r = props.onBuy(item.id, gems);
     if (!r.ok) return;
     track({ name: 'item_buy', item: item.id, price, deal: price !== item.price });
     if (r.setBonus) setToast({ title: t('market.setBonus', { n: r.setBonus }), item });
@@ -125,7 +146,7 @@ export default function MarketScreen(props: Props) {
   };
 
   const header = (
-    <TabHeader title={cat ? catTitle(cat) : t('market.title')} coins={wallet.coins} onCoins={props.onOpenShop} />
+    <TabHeader title={cat ? catTitle(cat) : t('market.title')} money={props.money} />
   );
 
   return (
@@ -136,7 +157,31 @@ export default function MarketScreen(props: Props) {
             <Text style={styles.backText}>‹ {t('market.title')}</Text>
           </Pressable>
           {header}
-          <CategoryView kind={cat} wallet={wallet} today={today} onBuy={buy} onEquip={props.onEquip} />
+          {cat === 'chests' ? (
+            <ChestsPage
+              money={props.money}
+              onChest={props.onChest}
+              onMystery={props.onMystery}
+              wheelFree={props.wheelFree}
+              onSpin={props.onSpin}
+              adLeft={props.adLeft}
+              adAvailable={props.adAvailable}
+              onAdMoney={props.onAdMoney}
+              onNeed={(k) => (k === 'coins' ? props.onOpenShop() : setCat(k === 'gems' ? 'gems' : 'chests'))}
+            />
+          ) : cat === 'gems' ? (
+            <GemsPage
+              money={props.money}
+              now={props.now}
+              starter={props.starter}
+              boosts={props.boosts}
+              shields={props.shields}
+              onIap={props.onIap}
+              onGem={props.onGem}
+            />
+          ) : (
+            <CategoryView kind={cat} wallet={wallet} today={today} onBuy={buy} onEquip={props.onEquip} />
+          )}
         </View>
       ) : (
         <>
@@ -153,6 +198,24 @@ export default function MarketScreen(props: Props) {
                 }
               }}
             />
+
+            <View style={styles.bigCards}>
+              <Pressable onPress={() => setCat('chests')} style={({ pressed }) => [styles.bigCard, { borderColor: UI.gold }, pressed && { opacity: 0.85 }]}>
+                <Image source={ICONS['chest-gold']} style={{ width: 52, height: 52 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bigTitle}>{t('market.chests')}</Text>
+                  <Text style={styles.bigSub}>{props.wheelFree ? t('wheel.freeReady') : t('market.chestsSub')}</Text>
+                </View>
+                {props.wheelFree && <View style={styles.redDot} />}
+              </Pressable>
+              <Pressable onPress={() => setCat('gems')} style={({ pressed }) => [styles.bigCard, { borderColor: '#4FA3FF' }, pressed && { opacity: 0.85 }]}>
+                <Image source={ICONS.gem} style={{ width: 48, height: 48 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bigTitle}>{t('money.gems')}</Text>
+                  <Text style={styles.bigSub}>{t('market.gemsSub')}</Text>
+                </View>
+              </Pressable>
+            </View>
 
             <View style={styles.rowHead}>
               <Text style={styles.h2}>{t('market.deals')}</Text>
@@ -190,38 +253,12 @@ export default function MarketScreen(props: Props) {
               })}
             </View>
 
-            <Pressable onPress={() => setBoxOpen(true)} style={({ pressed }) => [styles.box, pressed && { opacity: 0.85 }]}>
-              <Text style={{ fontSize: 44 }}>📦</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.boxTitle}>{t('market.box')}</Text>
-                <Text style={styles.boxSub}>{t('market.boxSub')}</Text>
-              </View>
-              <View style={styles.priceTag}>
-                <Text style={styles.priceTagText}>● {num(MYSTERY_PRICE)}</Text>
-              </View>
-            </Pressable>
+
           </ScrollView>
         </>
       )}
 
-      <Sheet visible={boxOpen} onClose={() => setBoxOpen(false)}>
-        <MysterySheet
-          wallet={wallet}
-          onOpen={() => {
-            if (wallet.coins < MYSTERY_PRICE) return props.onOpenShop();
-            const r = props.onMystery();
-            setBoxOpen(false);
-            if (r) {
-              track({ name: 'mystery_box', item: r.item.id });
-              setToast({
-                title: t('market.boxGot'),
-                sub: r.setBonus ? t('market.setBonus', { n: r.setBonus }) : undefined,
-                item: r.item,
-              });
-            }
-          }}
-        />
-      </Sheet>
+
 
       <Sheet visible={!!toast} onClose={() => setToast(null)}>
         {toast && (
@@ -324,7 +361,7 @@ function MysterySheet({ wallet, onOpen }: { wallet: Wallet; onOpen(): void }) {
 
 // ---------- Kategori ekranı: önizleme + ızgara ----------
 
-function CategoryView(p: { kind: Cat; wallet: Wallet; today: string; onBuy(m: MarketItem): void; onEquip(id: string): void }) {
+function CategoryView(p: { kind: ItemKind; wallet: Wallet; today: string; onBuy(m: MarketItem, gems?: boolean): void; onEquip(id: string): void }) {
   const { kind, wallet, today } = p;
   const items = itemsOf(kind);
   const { width, tablet } = useLayout();
@@ -365,10 +402,17 @@ function CategoryView(p: { kind: Cat; wallet: Wallet; today: string; onBuy(m: Ma
               </Pressable>
             )
           ) : (
-            <Pressable onPress={() => p.onBuy(item)} style={[styles.actBtn, !affordable && { backgroundColor: UI.panelHi }]}>
-              {price !== item.price && <Text style={styles.oldPriceSmall}>{num(item.price)}</Text>}
-              <Text style={[styles.actText, !affordable && { color: UI.dim }]}>● {num(price)}</Text>
-            </Pressable>
+            <View style={{ gap: 6, alignItems: 'flex-end' }}>
+              <Pressable onPress={() => p.onBuy(item)} style={[styles.actBtn, !affordable && { backgroundColor: UI.panelHi }]}>
+                {price !== item.price && <Text style={styles.oldPriceSmall}>{num(item.price)}</Text>}
+                <Text style={[styles.actText, !affordable && { color: UI.dim }]}>● {num(price)}</Text>
+              </Pressable>
+              {gemPriceFor(item) !== null && (
+                <Pressable onPress={() => p.onBuy(item, true)}>
+                  <PriceTag cost={{ gems: gemPriceFor(item)! }} dim={wallet.gems < gemPriceFor(item)!} />
+                </Pressable>
+              )}
+            </View>
           )}
         </View>
       </View>
@@ -581,6 +625,11 @@ function BigPreview({ item, width }: { item: MarketItem; width: number }) {
 export const RARITY_ORDER: Record<Rarity, number> = { common: 0, rare: 1, epic: 2, legend: 3 };
 
 const styles = StyleSheet.create({
+  bigCards: { gap: 10 },
+  bigCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: UI.panel, borderRadius: 18, padding: 12, borderWidth: 2 },
+  bigTitle: { color: UI.text, fontSize: 18, fontWeight: '900' },
+  bigSub: { color: UI.dim, fontSize: 13, fontWeight: '700' },
+  redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: UI.danger },
   home: { paddingHorizontal: 24, paddingBottom: 28, gap: 12 },
   back: { paddingHorizontal: 24, paddingTop: 10 },
   backText: { color: UI.accent, fontSize: 16, fontWeight: '800' },

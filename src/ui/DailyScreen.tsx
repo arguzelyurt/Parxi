@@ -7,18 +7,27 @@ import { UI } from '../game/palette';
 import { Progress } from '../game/storage';
 import { t } from '../i18n';
 import { Btn, Card, kit, TabHeader } from './kit';
+import { canRepairStreak, streakAfterDaily } from '../game/economy';
+import { GEM_COST, GEM_REWARD, SHIELD_MAX } from '../core/prices';
+import { Image } from 'react-native';
+import { ICONS } from './icons';
 
 interface Props {
   progress: Progress;
   todayKey: string;
   onPlay(): void;
   onShop(): void;
+  /** Elmas harcaması: seri koruyucu ya da seri onarma */
+  onGem(kind: 'shield' | 'repair'): boolean;
 }
 
 
-export default function DailyScreen({ progress, todayKey, onPlay, onShop }: Props) {
+export default function DailyScreen({ progress, todayKey, onPlay, onShop, onGem }: Props) {
   const done = progress.daily.lastDoneKey === todayKey;
-  const streak = streakAlive(progress.daily.lastDoneKey, todayKey) ? progress.daily.streak : 0;
+  // Koruyucular kaçırılan günleri kapatıyorsa seri hâlâ canlı
+  const after = streakAfterDaily(progress, todayKey);
+  const streak = done || streakAlive(progress.daily.lastDoneKey, todayKey) || after.streak > 1 ? progress.daily.streak : 0;
+  const repair = canRepairStreak(progress, todayKey);
   const todayStars = progress.daily.stars[todayKey] ?? 0;
   const nextStreak = done ? streak : streak + 1;
   const toBonus = 7 - (nextStreak % 7 || 7);
@@ -33,7 +42,7 @@ export default function DailyScreen({ progress, todayKey, onPlay, onShop }: Prop
 
   return (
     <View style={{ flex: 1 }}>
-      <TabHeader title={t('daily.title')} coins={progress.coins} onCoins={onShop} />
+      <TabHeader title={t('daily.title')} money={progress} />
       <ScrollView contentContainerStyle={styles.content}>
         <Card style={styles.hero}>
           <Text style={styles.big}>{done ? t('daily.doneTitle') : t('daily.readyTitle')}</Text>
@@ -81,6 +90,29 @@ export default function DailyScreen({ progress, todayKey, onPlay, onShop }: Prop
               );
             })}
           </View>
+        </Card>
+
+        {repair && (
+          <Card style={{ marginTop: 12, borderWidth: 2, borderColor: UI.danger }}>
+            <Text style={kit.cardTitle}>🔥 {t('daily.repair')}</Text>
+            <Text style={kit.cardSub}>{t('daily.repairSub', { n: progress.daily.streak })}</Text>
+            <Btn label={`💎 ${GEM_COST.repair}  ·  ${t('daily.repair')}`} gold onPress={() => onGem('repair') || onShop()} />
+          </Card>
+        )}
+        <Card style={{ marginTop: 12 }}>
+          <View style={styles.streakRow}>
+            <Image source={ICONS.shield} style={{ width: 40, height: 40 }} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={kit.cardTitle}>{t('daily.shields', { n: `${progress.streakShield}/${SHIELD_MAX}` })}</Text>
+              <Text style={[kit.cardSub, { marginTop: 2 }]}>{t('daily.shieldNote')}</Text>
+            </View>
+          </View>
+          {progress.streakShield < SHIELD_MAX && (
+            <Btn label={`💎 ${GEM_COST.shield}  ·  ${t('daily.buyShield')}`} onPress={() => onGem('shield') || onShop()} />
+          )}
+          <Text style={[kit.cardSub, { fontSize: 13 }]}>
+            💎 7. gün +{GEM_REWARD.streak7} · 30. gün +{GEM_REWARD.streak30}
+          </Text>
         </Card>
 
         <Text style={kit.section}>{t('daily.how')}</Text>

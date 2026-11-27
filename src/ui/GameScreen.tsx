@@ -42,6 +42,8 @@ import { Key, t } from '../i18n';
 import { COLORS, SYMBOLS, UI } from '../game/palette';
 import { Progress, SPEED_MS, todayUTC, trustedNow } from '../game/storage';
 import { spendLife } from '../core/lives';
+import { infiniteLivesActive, payContinue } from '../game/economy';
+import { GEM_COST, GEM_REWARD } from '../core/prices';
 import { LivesPanel, LivesPill } from './Lives';
 import { Btn, TextLink } from './kit';
 import { CarStyle, carStyleFor, fxFor, RiderSkin, riderFor, stopFor, themeFor } from '../game/skins';
@@ -382,6 +384,7 @@ export default function GameScreen(props: Props) {
   /** 1 can harca; yoksa can panelini aç */
   const payLife = (): boolean => {
     if (props.lifeCost === false || props.tutorial) return true;
+    if (infiniteLivesActive(progress, trustedNow(progress))) return true;
     const next = spendLife(progress.lives, trustedNow(progress));
     if (!next) {
       setNeedLife(true);
@@ -465,6 +468,19 @@ export default function GameScreen(props: Props) {
       track({ name: 'booster_used', kind: 'extraSlot', source: 'ad' });
       setS((cur) => addDockSlot(level, cur));
     }
+  };
+
+  /** Elmasla devam: +1 yer, seviye başına 1 kez */
+  const [gemContinued, setGemContinued] = useState(false);
+  const rescueByGems = () => {
+    if (gemContinued) return;
+    if (progress.gems < GEM_COST.continue) return money.openShop();
+    update((p) => payContinue(p) ?? p);
+    setGemContinued(true);
+    usedHelp.current = true;
+    track({ name: 'booster_used', kind: 'extraSlot', source: 'gems' });
+    if (s.reason === 'vip') setS((cur) => extendVip(level, cur, 2));
+    else setS((cur) => addDockSlot(level, cur));
   };
 
   const rescueBySpend = () => {
@@ -746,6 +762,7 @@ export default function GameScreen(props: Props) {
                 <Text style={styles.newCarTitle}>🔓 {t('game.newCar')}</Text>
                 <Showcase model={props.newCar} width={200} glow={UI.gold} />
                 <Text style={styles.newCarName}>{carName(props.newCar.key)}</Text>
+                <Text style={styles.mapChip}>💎 +{GEM_REWARD.newCar}</Text>
                 {progress.favoriteCar === props.newCar.key ? (
                   <Text style={styles.inShowcase}>✓ {t('game.inShowcase')}</Text>
                 ) : (
@@ -765,6 +782,7 @@ export default function GameScreen(props: Props) {
                 </Text>
                 <View style={styles.mapChips}>
                   <Text style={styles.mapChip}>● {mapReward(props.mapDone.index).coins}</Text>
+                  <Text style={styles.mapChip}>💎 {mapReward(props.mapDone.index).gems}</Text>
                   {(Object.keys(mapReward(props.mapDone.index).boosters) as Booster[]).map((k) => (
                     <Text key={k} style={styles.mapChip}>
                       {BOOSTER_ICON[k]} {mapReward(props.mapDone!.index).boosters[k]}
@@ -798,8 +816,11 @@ export default function GameScreen(props: Props) {
                 onPress={rescueByAd}
               />
             )}
+            {!gemContinued && s.reason !== 'noMove' && (
+              <Btn label={`💎  ${t('game.continueGems', { n: GEM_COST.continue })}`} primary onPress={rescueByGems} />
+            )}
             {s.reason === 'full' && (
-              <Btn label={t('game.rescueSpend', { cost: boosterLabel('extraSlot') })} primary onPress={rescueBySpend} />
+              <Btn label={t('game.rescueSpend', { cost: boosterLabel('extraSlot') })} onPress={rescueBySpend} />
             )}
             {s.reason === 'noMove' && (
               <Btn label={t('game.rescueCrane', { cost: boosterLabel('crane') })} primary onPress={rescueByCrane} />
@@ -819,7 +840,7 @@ export default function GameScreen(props: Props) {
               label={t('lives.exitAnyway')}
               onPress={() => {
                 setConfirmExit(false);
-                update((p) => ({ ...p, lives: spendLife(p.lives, trustedNow(p)) ?? p.lives }));
+                update((p) => (infiniteLivesActive(p, trustedNow(p)) ? p : { ...p, lives: spendLife(p.lives, trustedNow(p)) ?? p.lives }));
                 props.onExit();
               }}
             />

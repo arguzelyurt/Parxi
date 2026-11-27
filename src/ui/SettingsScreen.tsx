@@ -43,7 +43,7 @@ export default function SettingsScreen({ progress, update, onShop, onRestore, pr
         {!!PRIVACY_URL && <TextLink label={t('settings.policyWeb')} onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} />}
         <TextLink label={t('common.close')} onPress={() => setPolicy(false)} />
       </Sheet>
-      <TabHeader title={t('settings.title')} coins={progress.coins} onCoins={onShop} />
+      <TabHeader title={t('settings.title')} money={progress} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={kit.section}>{t('account.title')}</Text>
         <Card onPress={onAccount} style={styles.accountCard}>

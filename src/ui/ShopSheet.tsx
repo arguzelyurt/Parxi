@@ -17,11 +17,11 @@ interface Props {
   onRestore(): void;
 }
 
-const COIN_ROWS: { key: ProductKey; amount: number; note?: 'shop.more20' | 'shop.more40' | 'shop.best' }[] = [
-  { key: 'coins500', amount: 500 },
-  { key: 'coins1800', amount: 1800, note: 'shop.more20' },
-  { key: 'coins5500', amount: 5500, note: 'shop.more40' },
-  { key: 'coins16000', amount: 16000, note: 'shop.best' },
+const GEM_ROWS: { key: ProductKey; amount: number; note?: 'shop.more20' | 'shop.more40' | 'shop.best' }[] = [
+  { key: 'gems80', amount: 80 },
+  { key: 'gems500', amount: 500, note: 'shop.more20' },
+  { key: 'gems1200', amount: 1200, note: 'shop.more40' },
+  { key: 'gems2800', amount: 2800, note: 'shop.best' },
 ];
 
 export default function ShopSheet({ visible, progress, onClose, onBuy, onRestore }: Props) {
@@ -32,7 +32,7 @@ export default function ShopSheet({ visible, progress, onClose, onBuy, onRestore
   return (
     <Sheet visible={visible} onClose={onClose}>
       <Text style={styles.title}>{t('shop.title')}</Text>
-      <Text style={styles.coins}>● {progress.coins}</Text>
+      <Text style={styles.coins}>● {num(progress.coins)}   💎 {num(progress.gems)}   🎟 {progress.tickets}</Text>
       {!iapAvailable() && (
         <Text style={styles.warn}>
           {t('shop.unavailable')}
@@ -64,12 +64,6 @@ export default function ShopSheet({ visible, progress, onClose, onBuy, onRestore
             onPress={() => onBuy('supporter')}
           />
         )}
-        <Row
-          label={t('shop.rescue')}
-          sub={t('shop.rescueSub')}
-          price={priceFor(PRODUCTS.rescue.id, PRODUCTS.rescue.usd)}
-          onPress={() => onBuy('rescue')}
-        />
         {progress.level > ECONOMY.piggy.unlockLevel && (
           <Row
             label={t('shop.piggy', { n: num(progress.piggy) })}
@@ -80,13 +74,13 @@ export default function ShopSheet({ visible, progress, onClose, onBuy, onRestore
             }
             price={priceFor(PRODUCTS.piggy.id, PRODUCTS.piggy.usd)}
             onPress={() => onBuy('piggy')}
-            disabled={progress.piggy < 300}
+            disabled={progress.piggy < ECONOMY.piggy.cap}
           />
         )}
-        {COIN_ROWS.map((r) => (
+        {GEM_ROWS.map((r) => (
           <Row
             key={r.key}
-            label={t('shop.coins', { n: num(r.amount) })}
+            label={t('shop.gems', { n: num(r.amount) })}
             sub={r.note ? t(r.note) : undefined}
             price={priceFor(PRODUCTS[r.key].id, PRODUCTS[r.key].usd)}
             onPress={() => onBuy(r.key)}

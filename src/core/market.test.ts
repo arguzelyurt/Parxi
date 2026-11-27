@@ -27,6 +27,7 @@ import { ECONOMY } from './monetization';
 
 const wallet = (coins: number): Wallet => ({
   coins,
+  gems: 0,
   boosters: { undo: 0, hint: 0, crane: 0, extraSlot: 0 },
   owned: [],
   cosmetics: { ...DEFAULT_COSMETICS },

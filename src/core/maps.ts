@@ -3,6 +3,7 @@
 // ödül harita ilerledikçe büyür. Saf mantık (test edilir).
 
 import type { Booster } from './monetization';
+import { mapGems } from './prices';
 
 export interface MapInfo {
   /** 0'dan başlar */
@@ -18,6 +19,7 @@ export interface MapInfo {
 
 export interface MapReward {
   coins: number;
+  gems: number;
   boosters: Partial<Record<Booster, number>>;
 }
 
@@ -76,7 +78,7 @@ export function mapReward(index: number): MapReward {
   };
   if (index >= 2) boosters.crane = 1 + Math.floor(index / 5);
   if (index >= 4) boosters.extraSlot = 1 + Math.floor(index / 6);
-  return { coins: 150 + index * 75, boosters };
+  return { coins: 150 + index * 75, gems: mapGems(index), boosters };
 }
 
 /** Bu seviye bitince tamamlanan harita (yoksa null) */
@@ -87,6 +89,7 @@ export function mapCompletedAt(level: number): MapInfo | null {
 
 export interface Purse {
   coins: number;
+  gems: number;
   boosters: Record<Booster, number>;
   mapsClaimed: number[];
 }
@@ -97,5 +100,18 @@ export function claimMap<T extends Purse>(p: T, index: number): T {
   const r = mapReward(index);
   const boosters = { ...p.boosters };
   (Object.keys(r.boosters) as Booster[]).forEach((k) => (boosters[k] += r.boosters[k] ?? 0));
-  return { ...p, coins: p.coins + r.coins, boosters, mapsClaimed: [...p.mapsClaimed, index] };
+  return { ...p, coins: p.coins + r.coins, gems: p.gems + r.gems, boosters, mapsClaimed: [...p.mapsClaimed, index] };
+}
+
+// ---------- Kısımlar ----------
+/** Haritalar 3'erli kısımlar hâlinde açılır: önceki 3 haritanın bütün seviyeleri bitince sonraki 3 */
+export const SECTION_SIZE = 3;
+/** Seviyenin bulunduğu kısım (0'dan) */
+export const sectionOf = (level: number): number => Math.floor(mapOfLevel(level).index / SECTION_SIZE);
+/** Haritanın kısmı */
+export const sectionOfMap = (index: number): number => Math.floor(index / SECTION_SIZE);
+/** Açılış töreni bekleyen kısım (yoksa null): oyuncu yeni bir kısma geçmiş ama tören görülmemiş */
+export function pendingSection(level: number, claimed: number[]): number | null {
+  const s = sectionOf(level);
+  return s >= 1 && !claimed.includes(s) ? s : null;
 }

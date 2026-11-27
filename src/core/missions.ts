@@ -3,6 +3,7 @@
 
 import { hashSeed, mulberry32, shuffle } from './rng';
 import { t } from '../i18n';
+import { GEM_REWARD } from './prices';
 
 export type MissionKind =
   | 'win'
@@ -20,6 +21,8 @@ export interface Mission {
   kind: MissionKind;
   target: number;
   reward: number; // coin
+  /** Günün büyük görevi: elmas da verir */
+  gems?: number;
 }
 
 export interface MissionState {
@@ -28,6 +31,8 @@ export interface MissionState {
   progress: number[];
   claimed: boolean[];
   chestClaimed: boolean;
+  /** Dünden toplanmadan silinen ödül sayısı (bir kez hatırlatılır) */
+  missed?: number;
 }
 
 const POOL: Mission[] = [
@@ -69,6 +74,9 @@ export const MISSION_ICON: Record<MissionKind, 'flag' | 'star' | 'shield' | 'cal
 
 export const MISSION_CHEST = { coins: 50, hint: 1 } as const;
 
+/** Günlük sandıktan bilet çıkar mı (%50, güne göre sabit: herkese aynı, ekranda görünür) */
+export const chestTicket = (day: string): number => (hashSeed(`parxi-chest-ticket-${day}`) % 2 === 0 ? 1 : 0);
+
 /** Günün görevleri: aynı türden iki görev gelmez, en az biri "taşı/park et" türünden. */
 export function missionsFor(day: string): Mission[] {
   const order = shuffle(POOL, mulberry32(hashSeed(`parxi-missions-${day}`)));
@@ -81,6 +89,17 @@ export function missionsFor(day: string): Mission[] {
     picked.push(m);
     if (picked.length === MISSIONS_PER_DAY) break;
   }
+  // Biri "büyük görev": iki kat hedef, daha çok coin ve elmas
+  let big = -1;
+  for (let i = picked.length - 1; i >= 0; i--)
+    if (picked[i].kind !== 'daily') {
+      big = i;
+      break;
+    }
+  if (big >= 0) {
+    const m = picked[big];
+    picked[big] = { ...m, target: m.target * 2, reward: Math.round((m.reward * 1.5) / 5) * 5, gems: GEM_REWARD.bigMission };
+  }
   return picked;
 }
 
@@ -89,9 +108,17 @@ export function freshMissions(day: string): MissionState {
   return { day, missions, progress: missions.map(() => 0), claimed: missions.map(() => false), chestClaimed: false };
 }
 
-/** Gün değiştiyse yeni görevler. */
-export const ensureMissions = (s: MissionState | null | undefined, day: string): MissionState =>
-  s && s.day === day ? s : freshMissions(day);
+/** Toplanabilir ama toplanmamış ödül sayısı (sandık dahil) */
+export const unclaimedCount = (s: MissionState): number =>
+  s.missions.filter((_, i) => canClaimMission(s, i)).length + (canClaimChest(s) ? 1 : 0);
+
+/** Gün değiştiyse yeni görevler. Toplanmayan ödüller silinir; yeni gün bunu bir kez hatırlatır. */
+export function ensureMissions(s: MissionState | null | undefined, day: string): MissionState {
+  if (s && s.day === day) return s;
+  const fresh = freshMissions(day);
+  const missed = s ? unclaimedCount(s) : 0;
+  return missed ? { ...fresh, missed } : fresh;
+}
 
 export interface WinEvent {
   stars: number;
@@ -131,11 +158,11 @@ export const canClaimMission = (s: MissionState, i: number) => missionDone(s, i)
 export const canClaimChest = (s: MissionState) => s.claimed.every(Boolean) && !s.chestClaimed;
 export const missionsLeft = (s: MissionState) => !s.chestClaimed && s.missions.some((_, i) => !missionDone(s, i));
 
-export function claimMission(s: MissionState, i: number): { state: MissionState; coins: number } {
-  if (!canClaimMission(s, i)) return { state: s, coins: 0 };
+export function claimMission(s: MissionState, i: number): { state: MissionState; coins: number; gems: number } {
+  if (!canClaimMission(s, i)) return { state: s, coins: 0, gems: 0 };
   const claimed = s.claimed.slice();
   claimed[i] = true;
-  return { state: { ...s, claimed }, coins: s.missions[i].reward };
+  return { state: { ...s, claimed }, coins: s.missions[i].reward, gems: s.missions[i].gems ?? 0 };
 }
 
 export function missionLabel(m: Mission): string {

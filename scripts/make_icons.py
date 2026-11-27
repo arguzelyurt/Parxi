@@ -273,10 +273,89 @@ def i_lock(cv):
     cv.drawRect(skia.Rect(95, 124, 105, 156), P(Color=hx(INK)))
 
 
+def chest_of(body, lid, band):
+    def f(cv):
+        shadow(cv, 100, 186, 76, 9)
+        shape(cv, rr(28, 92, 172, 176, 12), body, 92, 176)
+        p = skia.Path(); p.moveTo(28, 100); p.cubicTo(28, 40, 172, 40, 172, 100); p.close()
+        shape(cv, p, lid, 50, 100)
+        for x in (52, 148):
+            shape(cv, rr(x - 9, 56, x + 9, 176, 4), band, 56, 176, w=4)
+        shape(cv, rr(84, 92, 116, 128, 6), band, 92, 128, w=4)
+        cv.drawCircle(100, 108, 5, P(Color=hx(INK)))
+        shine(cv, 40, 64, 70, 74, 5)
+    return f
+
+
+def i_gem(cv):
+    shadow(cv, 100, 186, 56, 8)
+    outer = poly([(52, 40), (148, 40), (182, 82), (100, 178), (18, 82)])
+    shape(cv, outer, '#4FA3FF', 40, 178, w=6)
+    ln = P(Style=skia.Paint.kStroke_Style, StrokeWidth=4, Color=hx('#CFEAFF'), StrokeJoin=skia.Paint.kRound_Join)
+    cv.drawLine(22, 82, 178, 82, ln)
+    for a, b in (((76, 40), (62, 82)), ((124, 40), (138, 82)), ((62, 82), (100, 172)), ((138, 82), (100, 172)), ((76, 40), (100, 82)), ((124, 40), (100, 82))):
+        cv.drawLine(*a, *b, ln)
+    cv.drawPath(poly([(60, 48), (84, 48), (72, 74)]), P(Color=hx('#FFFFFF', 150)))
+
+
+def i_ticket(cv):
+    shadow(cv, 100, 186, 70, 8)
+    p = skia.Path()
+    p.moveTo(30, 40); p.lineTo(170, 40); p.quadTo(184, 40, 184, 54); p.lineTo(184, 78)
+    p.arcTo(skia.Rect(166, 78, 202, 114), 270, -180, False)
+    p.lineTo(184, 146); p.quadTo(184, 160, 170, 160); p.lineTo(30, 160); p.quadTo(16, 160, 16, 146); p.lineTo(16, 114)
+    p.arcTo(skia.Rect(-2, 78, 34, 114), 90, -180, False)
+    p.lineTo(16, 54); p.quadTo(16, 40, 30, 40); p.close()
+    cv.save(); cv.rotate(-10, 100, 100)
+    shape(cv, p, '#3BCE7A', 40, 160, w=6)
+    dash = P(Style=skia.Paint.kStroke_Style, StrokeWidth=4, Color=hx('#E6FFEF'), PathEffect=skia.DashPathEffect.Make([8, 8], 0))
+    cv.drawLine(52, 52, 52, 148, dash)
+    f = skia.Font(skia.Typeface('Arial', skia.FontStyle.Bold()), 84)
+    cv.drawString('P', 88, 128, f, P(Color=hx('#FFFFFF')))
+    cv.drawString('P', 88, 128, f, P(Style=skia.Paint.kStroke_Style, StrokeWidth=4, Color=hx(INK)))
+    cv.restore()
+
+
+def i_wheel(cv):
+    shadow(cv, 100, 188, 60, 8)
+    cols = ['#E8453C', '#3A86FF', '#3BCE7A', '#FFB020', '#B04CFF', '#56CCF2', '#FF4D9A', '#2EC4B6']
+    r = skia.Rect(22, 18, 178, 174)
+    for i, c in enumerate(cols):
+        p = skia.Path(); p.moveTo(100, 96); p.arcTo(r, i * 45, 45, False); p.close()
+        cv.drawPath(p, P(Color=hx(c)))
+    cv.drawCircle(100, 96, 78, P(Style=skia.Paint.kStroke_Style, StrokeWidth=10, Color=hx('#FFC400')))
+    cv.drawCircle(100, 96, 78, P(Style=skia.Paint.kStroke_Style, StrokeWidth=3, Color=hx(INK)))
+    shape(cv, circ(100, 96, 20), '#FFC400', 76, 116, w=5)
+    shape(cv, poly([(84, 4), (116, 4), (100, 34)]), '#FFFFFF', 4, 34, w=5)
+
+
+def i_x2(cv):
+    shadow(cv, 100, 186, 60, 8)
+    shape(cv, circ(100, 96, 80), '#FF7A1A', 16, 176, w=6)
+    f = skia.Font(skia.Typeface('Arial', skia.FontStyle.Bold()), 78)
+    cv.drawString('x2', 52, 124, f, P(Color=hx('#FFFFFF')))
+    cv.drawString('x2', 52, 124, f, P(Style=skia.Paint.kStroke_Style, StrokeWidth=4, Color=hx(INK)))
+
+
+def i_infinite(cv):
+    i_heart(cv)
+    f = skia.Font(skia.Typeface('Arial', skia.FontStyle.Bold()), 80)
+    cv.drawString('\u221e', 62, 128, f, P(Color=hx('#FFFFFF')))
+
+
+def i_trade(cv):
+    shadow(cv, 100, 186, 66, 8)
+    shape(cv, rr(14, 30, 186, 170, 30), '#2A4166', 30, 170, w=6)
+    ar = P(Style=skia.Paint.kStroke_Style, StrokeWidth=10, Color=hx('#FFFFFF'), StrokeCap=skia.Paint.kRound_Cap, StrokeJoin=skia.Paint.kRound_Join)
+    cv.drawLine(60, 100, 140, 100, ar); cv.drawLine(120, 80, 140, 100, ar); cv.drawLine(120, 120, 140, 100, ar)
+
+
 ICONS = {
     'missions': i_clipboard, 'passenger': i_person, 'people': i_people, 'parking': i_parking,
     'car': i_car, 'bus': i_bus, 'truck': i_truck, 'star': i_star, 'bolt': i_bolt, 'shield': i_shield,
     'calendar': i_calendar, 'flag': i_flag, 'chest': i_chest, 'coin': i_coin, 'heart': i_heart, 'lock': i_lock,
+    'gem': i_gem, 'ticket': i_ticket, 'wheel': i_wheel, 'x2': i_x2, 'infinite': i_infinite, 'trade': i_trade,
+    'chest-bronze': chest_of('#9A5B2E', '#B06A36', '#E3A56B'), 'chest-silver': chest_of('#7C8796', '#98A4B3', '#E6EEF6'), 'chest-gold': chest_of('#D49A10', '#E8B320', '#FFF0A8'),
     'tab-home': i_home, 'tab-map': i_map, 'tab-market': i_cart, 'tab-garage': i_garage, 'tab-settings': i_gear,
 }
 

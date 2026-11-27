@@ -6,11 +6,36 @@ import { dailyKey, dailyLevel, levelFor } from './src/core/generator';
 import { dailyShareText, nextStreak } from './src/core/daily';
 import {
   applyWin,
+  chestTicket,
   claimMission,
   ensureMissions,
   MISSION_CHEST,
   missionsLeft,
 } from './src/core/missions';
+import { applyWeekly, claimWeekly, ensureWeekly } from './src/core/weekly';
+import { localDay, localWeek } from './src/core/time';
+import { GEM_REWARD, ChestKind } from './src/core/prices';
+import { earn } from './src/core/wallet';
+import {
+  applyReward,
+  buyBoost,
+  buyShield,
+  claimSection,
+  coinX2Active,
+  grantAdMoney,
+  infiniteLivesActive,
+  adMoneyLeft,
+  openChest,
+  openMystery,
+  repairStreak,
+  seeded,
+  spin,
+  streakAfterDaily,
+  tradeGems,
+} from './src/game/economy';
+import type { Reward } from './src/core/chests';
+import type { FlyKind } from './src/ui/FlyCoins';
+import { MoneyNav } from './src/ui/kit';
 import { planNotifications } from './src/core/notifyPlan';
 import { requestNotificationPermission, reschedule } from './src/services/notifications';
 import {
@@ -37,7 +62,7 @@ const deviceLang = (() => {
     return null;
   }
 })();
-import { applyPurchase, ProductKey, productKeyById, restoreNonConsumable } from './src/game/purchases';
+import { applyPurchase, ProductKey, productKeyById, restoreNonConsumable, starterOfferActive } from './src/game/purchases';
 import { loadProgress, Progress, saveProgress, todayUTC, trustedNow } from './src/game/storage';
 import * as Ads from './src/services/ads';
 import * as Iap from './src/services/iap';
@@ -48,16 +73,16 @@ import GameScreen, { MonetizationApi, WinResult } from './src/ui/GameScreen';
 import ShopSheet from './src/ui/ShopSheet';
 import HomeScreen from './src/ui/HomeScreen';
 import MapScreen from './src/ui/MapScreen';
-import { claimMap, mapCompletedAt, mapOfLevel } from './src/core/maps';
+import { claimMap, mapCompletedAt, mapOfLevel, pendingSection } from './src/core/maps';
 import GarageScreen from './src/ui/GarageScreen';
 import { carUnlockedAt } from './src/core/garage';
 import { introFor, Feature } from './src/core/features';
-import MarketScreen from './src/ui/MarketScreen';
+import MarketScreen, { MarketPage } from './src/ui/MarketScreen';
 import DailyScreen from './src/ui/DailyScreen';
 import SettingsScreen from './src/ui/SettingsScreen';
 import TabBar, { Tab } from './src/ui/TabBar';
 import { MAX_W } from './src/ui/layout';
-import { buyItem, BuyResult, claimGift, equipItem, MARKET_VERSION, openMysteryBox, Wallet } from './src/core/market';
+import { buyItem, buyItemWithGems, BuyResult, claimGift, equipItem, MARKET_VERSION, Wallet } from './src/core/market';
 import { canPlay } from './src/core/lives';
 import { differs, mergeSaves } from './src/core/cloud';
 import { ECONOMY as ECO } from './src/core/monetization';
@@ -81,6 +106,13 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [, setAdsTick] = useState(0); // izin formu sonrası "gizlilik tercihleri" düğmesi için
   const [livesOpen, setLivesOpen] = useState(false);
+  /** Para sayacının "+" düğmesi: Market'in Elmas ya da Sandıklar sayfası */
+  const [marketPage, setMarketPage] = useState<{ page: MarketPage; n: number } | null>(null);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(id);
+  }, []);
   const [missionsOpen, setMissionsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
@@ -95,6 +127,11 @@ export default function App() {
       if (!p) return p;
       const next = fn(p);
       saveProgress(next);
+      // Para hareketleri ölçülür (kayıttaki yeni girdiler)
+      if (next.walletLog !== p.walletLog) {
+        const old = new Set(p.walletLog);
+        for (const e of next.walletLog.filter((x) => !old.has(x)).slice(-5)) track({ name: 'wallet', why: e.why, coins: e.c ?? 0, gems: e.g ?? 0, tickets: e.k ?? 0 });
+      }
       return next;
     });
   }, []);
@@ -178,7 +215,7 @@ export default function App() {
   const playLevel = useCallback((at?: number) => {
     const p = progressRef.current;
     if (!p) return;
-    if (!canPlay(p.lives, trustedNow(p)) && !(p.level === 1 && !p.tutorialDone)) {
+    if (!canPlay(p.lives, trustedNow(p)) && !infiniteLivesActive(p, trustedNow(p)) && !(p.level === 1 && !p.tutorialDone)) {
       setLivesOpen(true);
       return;
     }
@@ -190,42 +227,50 @@ export default function App() {
   const dailyKeyOpen = screen.kind === 'daily' ? screen.key : null;
   const daily = useMemo(() => (dailyKeyOpen ? dailyLevel(dailyKeyOpen) : null), [dailyKeyOpen]);
 
+  /** Görevlerin günü ve haftası: telefonun yerel saatine göre (saat ileri alınamaz: trustedNow) */
+  const mDay = (p: Progress) => localDay(trustedNow(p));
+  const mWeek = (p: Progress) => localWeek(trustedNow(p));
+
   const onLevelWin = useCallback(
     (r: WinResult) =>
       update((p) => {
+        const now = trustedNow(p);
+        const x2 = coinX2Active(p, now) ? 2 : 1;
         // Tekrar oynanan seviye: yalnız yeni kazanılan yıldızlar için coin, en iyi yıldız saklanır.
         if (n < p.level) {
           const old = p.stars[level.id] ?? 0;
           const gained = Math.max(0, r.stars - old);
-          return { ...p, coins: p.coins + gained * ECO.perStar, stars: { ...p.stars, [level.id]: Math.max(r.stars, old) } };
+          return { ...earn(p, { coins: gained * ECO.perStar * x2 }, 'replay'), stars: { ...p.stars, [level.id]: Math.max(r.stars, old) } };
         }
         // Yalnız sıradaki seviye ödül verir ve ilerletir (aynı seviye iki kez ödül vermez).
         if (n !== p.level) return p;
-        const coins = p.coins + coinsForLevel(r.stars, !!level.hard);
         const m = mapCompletedAt(p.level);
+        const car = carUnlockedAt(p.level);
         const nextLevel = p.level + 1;
+        let next: Progress = earn(p, { coins: coinsForLevel(r.stars, !!level.hard) * x2, gems: car ? GEM_REWARD.newCar : 0 }, `level:${p.level}`);
+        // Haritanın son seviyesi: harita ödülü (bir kez): coin + elmas + güçlendirici
+        if (m) next = claimMap(next, m.index);
+        const ev = {
+          stars: r.stars,
+          launches: r.launches,
+          passengers: r.passengers,
+          buses: r.buses,
+          trucks: r.trucks,
+          cars: r.cars,
+          usedHelp: r.usedHelp,
+          isDaily: false,
+          hard: !!level.hard,
+        };
         return {
-          ...p,
+          ...next,
           level: nextLevel,
-          coins,
           piggy: piggyAfterLevel(p.piggy, p.level),
           stars: { ...p.stars, [level.id]: Math.max(r.stars, p.stars[level.id] ?? 0) },
           ads: onLevelWon(p.ads),
           starterOfferAt:
             p.starterOfferAt === 0 && nextLevel > ECONOMY.starterUnlockLevel ? Date.now() : p.starterOfferAt,
-          // Haritanın son seviyesi: harita ödülü (bir kez)
-          ...(m ? claimMap({ coins, boosters: p.boosters, mapsClaimed: p.mapsClaimed }, m.index) : {}),
-          missions: applyWin(ensureMissions(p.missions, todayUTC()), {
-            stars: r.stars,
-            launches: r.launches,
-            passengers: r.passengers,
-            buses: r.buses,
-            trucks: r.trucks,
-            cars: r.cars,
-            usedHelp: r.usedHelp,
-            isDaily: false,
-            hard: !!level.hard,
-          }),
+          missions: applyWin(ensureMissions(p.missions, mDay(p)), ev),
+          weekly: applyWeekly(ensureWeekly(p.weekly, mWeek(p)), { ...ev, level: true, mapDone: !!m }),
         };
       }),
     [update, level, n],
@@ -236,7 +281,7 @@ export default function App() {
     (key: string) => {
       const p = progressRef.current;
       if (!p || p.daily.lastDoneKey === key) return 0;
-      const streak = nextStreak(p.daily.lastDoneKey, p.daily.streak, key);
+      const { streak } = streakAfterDaily(p, key);
       return ECONOMY.daily + (streak % 7 === 0 ? ECONOMY.streak7Bonus : 0);
     },
     [],
@@ -245,15 +290,10 @@ export default function App() {
   const onDailyWin = useCallback(
     (key: string, r: WinResult) => {
       const coins = dailyCoins(key);
-      update((p) => ({
-        ...p,
-        coins: p.coins + coins,
-        daily: {
-          lastDoneKey: key,
-          streak: nextStreak(p.daily.lastDoneKey, p.daily.streak, key),
-          stars: { ...p.daily.stars, [key]: Math.max(r.stars, p.daily.stars[key] ?? 0) },
-        },
-        missions: applyWin(ensureMissions(p.missions, todayUTC()), {
+      update((p) => {
+        const first = p.daily.lastDoneKey !== key;
+        const st = streakAfterDaily(p, key);
+        const ev = {
           stars: r.stars,
           launches: r.launches,
           passengers: r.passengers,
@@ -263,8 +303,19 @@ export default function App() {
           usedHelp: r.usedHelp,
           isDaily: true,
           hard: true,
-        }),
-      }));
+        };
+        return {
+          ...earn(p, { coins, gems: first ? st.gems : 0 }, 'daily'),
+          streakShield: p.streakShield - (first ? st.shields : 0),
+          daily: {
+            lastDoneKey: key,
+            streak: st.streak,
+            stars: { ...p.daily.stars, [key]: Math.max(r.stars, p.daily.stars[key] ?? 0) },
+          },
+          missions: applyWin(ensureMissions(p.missions, mDay(p)), ev),
+          weekly: applyWeekly(ensureWeekly(p.weekly, mWeek(p)), { ...ev, firstDaily: first }),
+        };
+      });
     },
     [update, dailyCoins],
   );
@@ -272,8 +323,8 @@ export default function App() {
   const claim = useCallback(
     (i: number) =>
       update((p) => {
-        const r = claimMission(ensureMissions(p.missions, todayUTC()), i);
-        return { ...p, coins: p.coins + r.coins, missions: r.state };
+        const r = claimMission(ensureMissions(p.missions, mDay(p)), i);
+        return { ...earn(p, { coins: r.coins, gems: r.gems }, 'mission'), missions: r.state };
       }),
     [update],
   );
@@ -281,14 +332,34 @@ export default function App() {
   const claimChest = useCallback(
     () =>
       update((p) => {
-        const m = ensureMissions(p.missions, todayUTC());
+        const m = ensureMissions(p.missions, mDay(p));
         if (!m.claimed.every(Boolean) || m.chestClaimed) return p;
         return {
-          ...p,
-          coins: p.coins + MISSION_CHEST.coins,
+          ...earn(p, { coins: MISSION_CHEST.coins, tickets: chestTicket(m.day) }, 'mission:chest'),
           boosters: { ...p.boosters, hint: p.boosters.hint + MISSION_CHEST.hint },
           missions: { ...m, chestClaimed: true },
         };
+      }),
+    [update],
+  );
+
+  const claimWeek = useCallback(
+    (i: number) =>
+      update((p) => {
+        const r = claimWeekly(ensureWeekly(p.weekly, mWeek(p)), i);
+        return { ...earn(p, { gems: r.gems, tickets: r.tickets }, 'weekly'), weekly: r.state };
+      }),
+    [update],
+  );
+
+  /** "Dün toplanmadı" hatırlatması bir kez gösterilir */
+  const seenMissed = useCallback(
+    () =>
+      update((p) => {
+        const m = ensureMissions(p.missions, mDay(p));
+        const w = ensureWeekly(p.weekly, mWeek(p));
+        if (m.missed || w.missed) track({ name: 'missions_missed', daily: m.missed ?? 0, weekly: w.missed ?? 0 });
+        return { ...p, missions: { ...m, missed: 0 }, weekly: { ...w, missed: 0 } };
       }),
     [update],
   );
@@ -304,7 +375,7 @@ export default function App() {
         dailyDoneKey: p.daily.lastDoneKey,
         streak: p.daily.streak,
         piggyFull: p.level > ECONOMY.piggy.unlockLevel && p.piggy >= ECONOMY.piggy.cap,
-        missionsLeft: missionsLeft(ensureMissions(p.missions, todayUTC())),
+        missionsLeft: missionsLeft(ensureMissions(p.missions, mDay(p))),
       }),
     );
   }, []);
@@ -344,48 +415,107 @@ export default function App() {
 
   const walletOf = (p: Progress): Wallet => ({
     coins: p.coins,
+    gems: p.gems,
     boosters: p.boosters,
     owned: p.owned,
     cosmetics: p.cosmetics,
     setsClaimed: p.setsClaimed,
   });
 
-  // Market işlemleri sonucu ekrana göstermek için önce hesaplanır, sonra kaydedilir.
-  const marketBuy = useCallback(
-    (id: string): BuyResult => {
+  /**
+   * Önce hesapla (ekrana göster), sonra aynı işlemi kayda uygula. Rastgele işlemler tohumla
+   * yapıldığı için iki hesap da aynı sonucu verir.
+   */
+  const act = useCallback(
+    <R,>(fn: (p: Progress) => { p: Progress; out: R } | null): R | null => {
       const p = progressRef.current;
-      if (!p) return { ok: false, reason: 'unknown' };
-      const r = buyItem(walletOf(p), id, todayUTC());
-      if (r.ok) update((cur) => {
-        const again = buyItem(walletOf(cur), id, todayUTC());
-        return again.ok ? { ...cur, ...again.wallet } : cur;
-      });
-      return r;
+      if (!p) return null;
+      const r = fn(p);
+      if (!r) return null;
+      update((cur) => fn(cur)?.p ?? cur);
+      return r.out;
     },
     [update],
   );
 
-  const marketGift = useCallback(() => {
-    const p = progressRef.current;
-    if (!p) return null;
-    const r = claimGift(walletOf(p), p.gift, todayUTC());
-    if (!r) return null;
-    update((cur) => {
-      const again = claimGift(walletOf(cur), cur.gift, todayUTC());
-      return again ? { ...cur, ...again.wallet, gift: again.gift } : cur;
-    });
-    return r.got;
-  }, [update]);
+  // Market işlemleri sonucu ekrana göstermek için önce hesaplanır, sonra kaydedilir.
+  const marketBuy = useCallback(
+    (id: string, gems?: boolean): BuyResult =>
+      act((p) => {
+        const r = gems ? buyItemWithGems(walletOf(p), id) : buyItem(walletOf(p), id, todayUTC());
+        return { p: r.ok ? { ...p, ...r.wallet } : p, out: r };
+      }) ?? { ok: false, reason: 'unknown' },
+    [act],
+  );
+
+  const marketGift = useCallback(
+    () =>
+      act((p) => {
+        const r = claimGift(walletOf(p), p.gift, todayUTC());
+        if (!r) return null;
+        return { p: earn({ ...p, ...r.wallet, gift: r.gift }, { tickets: r.got.tickets }, 'gift'), out: r.got };
+      }),
+    [act],
+  );
 
   const marketMystery = useCallback(() => {
-    const p = progressRef.current;
-    if (!p) return null;
-    const r = openMysteryBox(walletOf(p));
-    if (!r.ok) return null;
-    // Aynı sonucu kaydet (rastgelelik bir kez)
-    update((cur) => (cur.coins === p.coins && cur.owned.length === p.owned.length ? { ...cur, ...r.wallet } : cur));
-    return { item: r.item, setBonus: r.setBonus };
-  }, [update]);
+    const seed = Math.random();
+    return act((p) => {
+      const r = openMystery(p, seeded(seed));
+      return r && { p: r.p, out: r.reward };
+    });
+  }, [act]);
+
+  const marketChest = useCallback((kind: ChestKind) => {
+    const seed = Math.random();
+    return act((p) => {
+      const r = openChest(p, kind, false, seeded(seed));
+      return r && { p: r.p, out: r.reward };
+    });
+  }, [act]);
+
+  const marketSpin = useCallback(() => {
+    const seed = Math.random();
+    return act((p) => {
+      const r = spin(p, mDay(p), seeded(seed));
+      return r && { p: r.p, out: r.index };
+    });
+  }, [act]);
+
+  const gemAction = useCallback(
+    (kind: 'infiniteLives' | 'coinX2' | 'shield' | 'repair' | 'trade'): boolean =>
+      !!act((p) => {
+        const now = trustedNow(p);
+        const r =
+          kind === 'shield'
+            ? buyShield(p)
+            : kind === 'repair'
+              ? repairStreak(p, dailyKey(new Date()))
+              : kind === 'trade'
+                ? tradeGems(p)
+                : buyBoost(p, kind, now);
+        return r && { p: r, out: true };
+      }),
+    [act],
+  );
+
+  const adMoney = useCallback(
+    async (kind: 'coins' | 'tickets') => {
+      const ok = await money.watchAd(`money_${kind}`);
+      if (!ok) return false;
+      update((p) => grantAdMoney(p, kind, mDay(p)) ?? p);
+      return true;
+    },
+    [money, update],
+  );
+
+  const sectionClaim = useCallback((section: number) => {
+    const seed = Math.random();
+    return act((p) => {
+      const r = claimSection(p, section, seeded(seed));
+      return r && { p: r.p, out: r.reward };
+    });
+  }, [act]);
 
   const marketEquip = useCallback(
     (id: string) => update((p) => ({ ...p, ...equipItem(walletOf(p), id) })),
@@ -397,6 +527,17 @@ export default function App() {
     [update],
   );
 
+
+  /** Para sayacına basınca: coin ve elmas → Market Elmas sayfası, bilet → Sandıklar */
+  const openMoney = useCallback(
+    (kind: FlyKind) => {
+      if (screen.kind !== 'tabs') return money.openShop();
+      setMissionsOpen(false);
+      setMarketPage((m) => ({ page: kind === 'tickets' ? 'chests' : 'gems', n: (m?.n ?? 0) + 1 }));
+      setTab('market');
+    },
+    [screen.kind, money],
+  );
 
   // ---------- Bildirim ışıkları ----------
   const badges = {
@@ -537,7 +678,7 @@ export default function App() {
       }
     }
     update((cur) => ({ ...cur, ads: after }));
-    if (!canPlay(p.lives, trustedNow(p))) {
+    if (!canPlay(p.lives, trustedNow(p)) && !infiniteLivesActive(p, trustedNow(p))) {
       setScreen({ kind: 'tabs' });
       setTab('home');
       setLivesOpen(true);
@@ -549,6 +690,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <FlyCoinsProvider>
+      <MoneyNav.Provider value={openMoney}>
       <StatusBar style="light" />
       <SafeAreaView
         style={{
@@ -575,7 +717,8 @@ export default function App() {
                       onGarage={() => setTab('garage')}
                       onMap={() => setTab('map')}
                       onShop={() => money.openShop()}
-                      missions={ensureMissions(progress.missions, todayUTC())}
+                      missions={ensureMissions(progress.missions, mDay(progress))}
+                      weekly={ensureWeekly(progress.weekly, mWeek(progress))}
                       onMissions={() => setMissionsOpen(true)}
                       onLives={() => setLivesOpen(true)}
                       dots={{ garage: badges.garage, map: badges.map }}
@@ -595,18 +738,34 @@ export default function App() {
                       progress={progress}
                       todayKey={today}
                       onPlay={() => setScreen({ kind: 'daily', key: today })}
-                      onShop={() => money.openShop()}
+                      onShop={() => openMoney('gems')}
+                      onGem={gemAction}
                     />
                   )}
                   {tab === 'market' && (
                     <MarketScreen
+                      key={marketPage?.n ?? 0}
+                      page={marketPage?.page}
                       wallet={walletOf(progress)}
+                      money={progress}
                       gift={progress.gift}
                       today={todayUTC()}
                       onBuy={marketBuy}
                       onEquip={marketEquip}
                       onGift={marketGift}
                       onMystery={marketMystery}
+                      onChest={marketChest}
+                      wheelFree={progress.wheelDay !== mDay(progress)}
+                      onSpin={marketSpin}
+                      adLeft={adMoneyLeft(progress, mDay(progress))}
+                      adAvailable={money.rewardedAvailable()}
+                      onAdMoney={adMoney}
+                      now={now}
+                      starter={starterOfferActive(progress, now)}
+                      boosts={progress.boosts}
+                      shields={progress.streakShield}
+                      onIap={buy}
+                      onGem={gemAction}
                       onOpenShop={() => money.openShop()}
                     />
                   )}
@@ -653,7 +812,8 @@ export default function App() {
                 update={update}
                 money={money}
                 coinsFor={(stars) =>
-                  replay ? Math.max(0, stars - (progress.stars[level.id] ?? 0)) * ECO.perStar : coinsForLevel(stars, !!level.hard)
+                  (replay ? Math.max(0, stars - (progress.stars[level.id] ?? 0)) * ECO.perStar : coinsForLevel(stars, !!level.hard)) *
+                  (coinX2Active(progress, trustedNow(progress)) ? 2 : 1)
                 }
                 onWin={onLevelWin}
                 newCar={replay ? null : carUnlockedAt(n)}
@@ -715,9 +875,12 @@ export default function App() {
             </Sheet>
             {missionsOpen && screen.kind === 'tabs' && (
               <MissionsPanel
-                state={ensureMissions(progress.missions, todayUTC())}
+                state={ensureMissions(progress.missions, mDay(progress))}
+                weekly={ensureWeekly(progress.weekly, mWeek(progress))}
                 onClaim={claim}
                 onClaimChest={claimChest}
+                onClaimWeekly={claimWeek}
+                onSeenMissed={seenMissed}
                 onClose={() => setMissionsOpen(false)}
               />
             )}
@@ -736,6 +899,7 @@ export default function App() {
         )}
         </View>
       </SafeAreaView>
+      </MoneyNav.Provider>
       </FlyCoinsProvider>
     </SafeAreaProvider>
   );

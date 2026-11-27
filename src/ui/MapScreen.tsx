@@ -63,7 +63,7 @@ export default function MapScreen({
 
   return (
     <View style={{ flex: 1 }}>
-      <TabHeader title={t('map.title')} coins={progress.coins} onCoins={onShop} />
+      <TabHeader title={t('map.title')} money={progress} />
       <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 24 }}>
         {shown.map((m) => (
           <Section

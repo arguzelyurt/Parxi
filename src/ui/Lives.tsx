@@ -7,6 +7,8 @@ import { UI } from '../game/palette';
 import { Progress, trustedNow } from '../game/storage';
 import { t } from '../i18n';
 import { Btn, TextLink } from './kit';
+import { buyBoost, infiniteLivesActive } from '../game/economy';
+import { BOOST_MS, GEM_COST } from '../core/prices';
 
 export const fmtMs = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -24,10 +26,18 @@ export function useNow(ms = 1000) {
 }
 
 /** ❤ 4 · 07:12 */
-export function LivesPill({ lives, onPress, compact }: { lives: Lives; onPress?(): void; compact?: boolean }) {
+export function LivesPill({ lives, onPress, compact, infiniteUntil = 0 }: { lives: Lives; onPress?(): void; compact?: boolean; infiniteUntil?: number }) {
   const now = useNow();
   const s = settleLives(lives, now);
   const next = msToNextLife(lives, now);
+  if (infiniteUntil > now)
+    return (
+      <Pressable onPress={onPress} disabled={!onPress} hitSlop={8} style={[styles.pill, compact && styles.pillCompact]}>
+        <Text style={styles.heart}>❤</Text>
+        <Text style={styles.count}>∞</Text>
+        <Text style={styles.timer}>{fmtMs(infiniteUntil - now)}</Text>
+      </Pressable>
+    );
   return (
     <Pressable onPress={onPress} disabled={!onPress} hitSlop={8} style={[styles.pill, compact && styles.pillCompact]}>
       <Text style={styles.heart}>❤</Text>
@@ -93,6 +103,16 @@ export function LivesPanel(props: {
           }}
         />
       )}
+      {!infiniteLivesActive(progress, now) && (
+        <Btn
+          label={`${t('lives.buyInfinite', { m: BOOST_MS.infiniteLives / 60000 })}  ·  💎 ${GEM_COST.infiniteLives}`}
+          onPress={() => {
+            if (progress.gems < GEM_COST.infiniteLives) return props.onShop();
+            update((p) => buyBoost(p, 'infiniteLives', trustedNow(p)) ?? p);
+          }}
+        />
+      )}
+      {infiniteLivesActive(progress, now) && <Text style={styles.sub}>♾️ {t('lives.infiniteOn')} · {fmtMs(progress.boosts.infiniteLivesUntil - now)}</Text>}
       <TextLink label={t('common.close')} onPress={props.onClose} />
     </>
   );

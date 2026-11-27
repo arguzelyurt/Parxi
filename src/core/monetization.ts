@@ -56,7 +56,8 @@ export const ECONOMY = {
   prices: { undo: 30, hint: 50, crane: 80, extraSlot: 150 },
   /** Tıkanınca ödüllü reklamla +1 rıhtım yeri: günde en fazla */
   rescueAdsPerDay: 3,
-  piggy: { perLevel: 15, cap: 3000, unlockLevel: 30 },
+  /** Elmas kumbarası: seviye başına 1 elmas, 300'de dolar */
+  piggy: { perLevel: 1, cap: 300, unlockLevel: 30 },
   /** Başlangıç paketi bu seviyeden sonra 48 saatliğine açılır */
   starterUnlockLevel: 15,
 } as const;
@@ -154,10 +155,23 @@ export const PRODUCTS = {
   removeAds: { id: 'parxi.remove_ads', type: 'non-consumable', usd: 4.99 },
   supporter: { id: 'parxi.supporter', type: 'non-consumable', usd: 9.99 },
   starter: { id: 'parxi.starter_pack', type: 'consumable', usd: 1.99 },
-  rescue: { id: 'parxi.rescue', type: 'consumable', usd: 0.99 },
   piggy: { id: 'parxi.piggy_bank', type: 'consumable', usd: 2.99 },
-  coins500: { id: 'parxi.coins_500', type: 'consumable', usd: 0.99 },
-  coins1800: { id: 'parxi.coins_1800', type: 'consumable', usd: 2.99 },
-  coins5500: { id: 'parxi.coins_5500', type: 'consumable', usd: 7.99 },
-  coins16000: { id: 'parxi.coins_16000', type: 'consumable', usd: 19.99 },
+  gems80: { id: 'parxi.gems_80', type: 'consumable', usd: 0.99 },
+  gems500: { id: 'parxi.gems_500', type: 'consumable', usd: 4.99 },
+  gems1200: { id: 'parxi.gems_1200', type: 'consumable', usd: 9.99 },
+  gems2800: { id: 'parxi.gems_2800', type: 'consumable', usd: 19.99 },
 } as const;
+
+/** Artık satılmayan eski ürünler: yarım kalmış satın alma gelirse yine işlenir */
+export const LEGACY_PRODUCTS: Record<string, { coins?: number; boosters?: Partial<Record<Booster, number>> }> = {
+  'parxi.rescue': { boosters: { extraSlot: 2, hint: 1 } },
+  'parxi.coins_500': { coins: 500 },
+  'parxi.coins_1800': { coins: 1800 },
+  'parxi.coins_5500': { coins: 5500 },
+  'parxi.coins_16000': { coins: 16000 },
+};
+
+/** Paketlerin içeriği */
+export const GEM_PACKS = { gems80: 80, gems500: 500, gems1200: 1200, gems2800: 2800 } as const;
+export const STARTER_PACK = { gems: 300, coins: 2000, tickets: 3, boosters: { extraSlot: 2, crane: 2, hint: 3 } } as const;
+export const SUPPORTER_GEMS = 500;

@@ -44,6 +44,7 @@ test('ekonomi', () => {
   assert.equal(coinsForLevel(3, false), 25);
   assert.equal(coinsForLevel(3, true), 50);
   assert.equal(piggyAfterLevel(0, 10), 0);
-  assert.equal(piggyAfterLevel(2990, 40), 3000);
+  assert.equal(piggyAfterLevel(299, 40), 300);
+  assert.equal(piggyAfterLevel(300, 40), 300);
   assert.equal(rollDay({ ...initialAdState('a'), interstitialsToday: 4 }, 'b').interstitialsToday, 0);
 });

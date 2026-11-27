@@ -2,7 +2,9 @@
 import { CAR_MODELS, SPECIAL_CARS } from '../core/garage';
 import { canClaimGift, MARKET_VERSION } from '../core/market';
 import { canClaimChest, canClaimMission, ensureMissions } from '../core/missions';
-import { Progress, todayUTC } from './storage';
+import { Progress, todayUTC, trustedNow } from './storage';
+import { localDay, localWeek } from '../core/time';
+import { ensureWeekly, weeklyReady } from '../core/weekly';
 
 /** Garaja girmiş ama henüz görülmemiş arabalar */
 export function newCars(p: Progress): string[] {
@@ -20,9 +22,9 @@ export const mapHasNew = (p: Progress): boolean => p.level > p.seenMapLevel;
 export const marketHasNew = (p: Progress, today = todayUTC()): boolean =>
   canClaimGift(p.gift, today) || p.marketSeenDay !== today || p.marketSeenVersion < MARKET_VERSION;
 
-export function missionsReady(p: Progress, today = todayUTC()): boolean {
-  const m = ensureMissions(p.missions, today);
-  return m.missions.some((_, i) => canClaimMission(m, i)) || canClaimChest(m);
+export function missionsReady(p: Progress, now = trustedNow(p)): boolean {
+  const m = ensureMissions(p.missions, localDay(now));
+  return m.missions.some((_, i) => canClaimMission(m, i)) || canClaimChest(m) || weeklyReady(ensureWeekly(p.weekly, localWeek(now)));
 }
 
 export const dailyReady = (p: Progress, dayKey: string): boolean => p.daily.lastDoneKey !== dayKey;

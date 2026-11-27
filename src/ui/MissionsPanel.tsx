@@ -1,11 +1,13 @@
-// Günlük görevler paneli: ekranın üstünde açılan kart (Modal değil, ki uçan coinler üstünde görünsün).
-// Her görevin kendi ikonu var; "Topla"ya basınca coinler düğmeden çıkıp sayaca uçar.
-import React, { useEffect, useRef } from 'react';
+// Görevler paneli (Günlük | Haftalık): ekranın üstünde açılan kart (Modal değil, ki uçan paralar
+// üstünde görünsün). "Topla"ya basınca paralar düğmeden çıkıp kendi sayaçlarına uçar.
+// Toplanmayan ödül gün (haftalıkta hafta) bitince silinir: kalan süre ve uyarı görünür.
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from './Text';
 import {
   canClaimChest,
   canClaimMission,
+  chestTicket,
   MISSION_CHEST,
   MISSION_ICON,
   missionDone,
@@ -16,25 +18,45 @@ import { UI } from '../game/palette';
 import { t } from '../i18n';
 import { useFlyCoins, ViewRef } from './FlyCoins';
 import { ICONS } from './icons';
-import { useNow } from './Lives';
+import { fmtMs, useNow } from './Lives';
+import { canClaimWeekly, WEEKLY_ICON, weeklyDone, weeklyLabel, WeeklyState } from '../core/weekly';
+import { msToLocalMidnight, msToNextWeek } from '../core/time';
 
 interface Props {
   state: MissionState;
+  weekly: WeeklyState;
   onClaim(i: number): void;
   onClaimChest(): void;
+  onClaimWeekly(i: number): void;
+  /** "Dün toplanmadı" hatırlatması görüldü */
+  onSeenMissed(): void;
   onClose(): void;
 }
 
 const fmt = (ms: number) => {
   const m = Math.max(0, Math.floor(ms / 60000));
+  const d = Math.floor(m / 1440);
+  if (d > 0) return `${d}${t('time.d')} ${Math.floor((m % 1440) / 60)}${t('time.h')}`;
   return `${Math.floor(m / 60)}${t('time.h')} ${m % 60}${t('time.m')}`;
 };
 
-export default function MissionsPanel({ state, onClaim, onClaimChest, onClose }: Props) {
+export default function MissionsPanel(props: Props) {
+  const { state, weekly, onClaim, onClaimChest, onClose } = props;
+  const [tab, setTab] = useState<'daily' | 'weekly'>('daily');
   const fly = useFlyCoins();
-  const now = useNow(30000);
-  const d = new Date(now);
-  const left = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - now;
+  const now = useNow(1000);
+  const left = msToLocalMidnight(now);
+  const weekLeft = msToNextWeek(now);
+  const lastHour = left < 3600_000;
+  const readyDaily = state.missions.filter((_, i) => canClaimMission(state, i)).length + (canClaimChest(state) ? 1 : 0);
+  const readyWeekly = weekly.missions.filter((_, i) => canClaimWeekly(weekly, i)).length;
+  const missed = state.missed ?? 0;
+  const missedWeek = weekly.missed ?? 0;
+  const ticket = chestTicket(state.day);
+  const close = () => {
+    if (missed || missedWeek) props.onSeenMissed();
+    onClose();
+  };
   const total = state.missions.length;
   const claimed = state.claimed.filter(Boolean).length;
   const chestReady = canClaimChest(state);
@@ -48,7 +70,7 @@ export default function MissionsPanel({ state, onClaim, onClaimChest, onClose }:
 
   return (
     <View style={styles.fill_}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
+      <Pressable style={styles.backdrop} onPress={close} />
       <Animated.View
         style={[
           styles.card,
@@ -59,12 +81,65 @@ export default function MissionsPanel({ state, onClaim, onClaimChest, onClose }:
           <Image source={ICONS.missions} style={styles.headIcon} />
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{t('missions.title')}</Text>
-            <Text style={styles.ends}>⏳ {t('missions.ends', { time: fmt(left) })}</Text>
+            <Text style={[styles.ends, tab === 'daily' && lastHour && { color: '#FF7A6E' }]}>
+              ⏳ {t('missions.ends', { time: tab === 'daily' ? (lastHour ? fmtMs(left) : fmt(left)) : fmt(weekLeft) })}
+            </Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.close}>
+          <Pressable onPress={close} hitSlop={12} style={styles.close}>
             <Text style={styles.closeText}>✕</Text>
           </Pressable>
         </View>
+
+        <View style={styles.tabs}>
+          {(['daily', 'weekly'] as const).map((k) => {
+            const n = k === 'daily' ? readyDaily : readyWeekly;
+            return (
+              <Pressable key={k} onPress={() => setTab(k)} style={[styles.tab, tab === k && styles.tabOn]}>
+                <Text style={[styles.tabText, tab === k && { color: UI.bg }]}>{t(k === 'daily' ? 'missions.daily' : 'missions.weekly')}</Text>
+                {n > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{n}</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {(tab === 'daily' ? readyDaily : readyWeekly) > 0 && (
+          <View style={[styles.expire, tab === 'daily' && lastHour && styles.expireHot]}>
+            <Text style={styles.expireText}>{t(tab === 'daily' ? 'missions.expire' : 'missions.expireWeek')}</Text>
+            <Text style={styles.expireTime}>{tab === 'daily' ? fmtMs(left) : fmt(weekLeft)}</Text>
+          </View>
+        )}
+        {tab === 'daily' && missed > 0 && <Text style={styles.missed}>{t('missions.missed', { n: missed })}</Text>}
+        {tab === 'weekly' && missedWeek > 0 && <Text style={styles.missed}>{t('missions.missedWeek', { n: missedWeek })}</Text>}
+
+        {tab === 'weekly' ? (
+          <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ gap: 10 }}>
+            {weekly.missions.map((m, i) => (
+              <Row
+                key={i}
+                icon={WEEKLY_ICON[m.kind]}
+                label={weeklyLabel(m)}
+                progress={weekly.progress[i]}
+                target={m.target}
+                reward={m.gems}
+                rewardIcon="gem"
+                extra={m.tickets}
+                done={weeklyDone(weekly, i)}
+                claimable={canClaimWeekly(weekly, i)}
+                claimed={weekly.claimed[i]}
+                onClaim={(ref) => {
+                  if (!fly) return props.onClaimWeekly(i);
+                  fly.fly(ref, m.gems, () => props.onClaimWeekly(i), 'gems');
+                  setTimeout(() => fly.fly(ref, m.tickets, undefined, 'tickets'), 150);
+                }}
+              />
+            ))}
+          </ScrollView>
+        ) : (
+        <>
 
         {/* Sandık ilerlemesi */}
         <View style={styles.chestRow}>
@@ -77,7 +152,11 @@ export default function MissionsPanel({ state, onClaim, onClaimChest, onClose }:
           <Pressable
             ref={chestRef}
             disabled={!chestReady}
-            onPress={() => fly?.fly(chestRef.current, MISSION_CHEST.coins, onClaimChest) ?? onClaimChest()}
+            onPress={() => {
+              if (!fly) return onClaimChest();
+              fly.fly(chestRef.current, MISSION_CHEST.coins, onClaimChest);
+              if (ticket) setTimeout(() => fly.fly(chestRef.current, 1, undefined, 'tickets'), 150);
+            }}
           >
             <Wiggle on={chestReady}>
               <Image source={ICONS.chest} style={[styles.chestIcon, state.chestClaimed && { opacity: 0.45 }]} />
@@ -87,10 +166,10 @@ export default function MissionsPanel({ state, onClaim, onClaimChest, onClose }:
         </View>
         <Text style={styles.chestText}>
           {state.chestClaimed
-            ? `✓ ${t('reward.taken')} · ● ${MISSION_CHEST.coins} · 💡 ${MISSION_CHEST.hint}`
+            ? `✓ ${t('reward.taken')} · ● ${MISSION_CHEST.coins} · 💡 ${MISSION_CHEST.hint}${ticket ? ' · 🎟 1' : ''}`
             : chestReady
               ? t('missions.chestReady')
-              : t('missions.chestHint', { coins: MISSION_CHEST.coins, hint: MISSION_CHEST.hint })}
+              : `${t('missions.chestHint', { coins: MISSION_CHEST.coins, hint: MISSION_CHEST.hint })}${ticket ? ' · 🎟 1' : ''}`}
         </Text>
 
         <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ gap: 10 }}>
@@ -102,13 +181,22 @@ export default function MissionsPanel({ state, onClaim, onClaimChest, onClose }:
               progress={state.progress[i]}
               target={m.target}
               reward={m.reward}
+              extraGems={m.gems}
+              big={!!m.gems}
+              hot={lastHour}
               done={missionDone(state, i)}
               claimable={canClaimMission(state, i)}
               claimed={state.claimed[i]}
-              onClaim={(ref) => (fly ? fly.fly(ref, m.reward, () => onClaim(i)) : onClaim(i))}
+              onClaim={(ref) => {
+                if (!fly) return onClaim(i);
+                fly.fly(ref, m.reward, () => onClaim(i));
+                if (m.gems) setTimeout(() => fly.fly(ref, m.gems!, undefined, 'gems'), 150);
+              }}
             />
           ))}
         </ScrollView>
+        </>
+        )}
       </Animated.View>
     </View>
   );
@@ -120,6 +208,15 @@ function Row(p: {
   progress: number;
   target: number;
   reward: number;
+  /** Ödülün ikonu (varsayılan coin) */
+  rewardIcon?: keyof typeof ICONS;
+  /** Haftalık: ek bilet */
+  extra?: number;
+  /** Büyük görev: ek elmas */
+  extraGems?: number;
+  big?: boolean;
+  /** Son saat: daha sık atar */
+  hot?: boolean;
   done: boolean;
   claimable: boolean;
   claimed: boolean;
@@ -132,19 +229,22 @@ function Row(p: {
     if (!p.claimable) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: p.hot ? 280 : 600, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: p.hot ? 280 : 600, useNativeDriver: true }),
       ]),
     );
     loop.start();
     return () => loop.stop();
-  }, [p.claimable, pulse]);
+  }, [p.claimable, p.hot, pulse]);
+  const icon = p.rewardIcon ?? 'coin';
+  const extraText = p.extraGems ? `+${p.extraGems}💎` : p.extra ? `+${p.extra}🎟` : null;
   return (
     <View style={[styles.row, p.claimable && styles.rowReady, p.claimed && styles.rowDone]}>
       <View style={[styles.iconTile, p.claimable && { backgroundColor: '#FFE9A6' }]}>
         <Image source={ICONS[p.icon]} style={styles.rowIcon} />
       </View>
       <View style={{ flex: 1, gap: 6 }}>
+        {p.big && <Text style={styles.bigTag}>{t('missions.big')}</Text>}
         <Text style={[styles.label, p.claimed && { color: UI.dim }]} numberOfLines={2}>
           {p.label}
         </Text>
@@ -158,20 +258,22 @@ function Row(p: {
       {p.claimed ? (
         <View style={styles.taken}>
           <Text style={styles.takenText}>✓</Text>
-          <Text style={styles.takenSub}>● {p.reward}</Text>
+          <Text style={styles.takenSub}>{icon === 'gem' ? '💎' : '●'} {p.reward}</Text>
         </View>
       ) : p.claimable ? (
         <Animated.View style={{ transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) }] }}>
           <Pressable ref={btn} onPress={() => p.onClaim(btn.current)} style={({ pressed }) => [styles.claim, pressed && { transform: [{ scale: 0.94 }] }]}>
-            <Image source={ICONS.coin} style={styles.claimCoin} />
+            <Image source={ICONS[icon]} style={styles.claimCoin} />
             <Text style={styles.claimText}>{p.reward}</Text>
+            {extraText && <Text style={styles.claimSub}>{extraText}</Text>}
             <Text style={styles.claimSub}>{t('missions.collect')}</Text>
           </Pressable>
         </Animated.View>
       ) : (
         <View style={styles.reward}>
-          <Image source={ICONS.coin} style={styles.claimCoin} />
-          <Text style={styles.rewardText}>{p.reward}</Text>
+          <Image source={ICONS[icon]} style={styles.claimCoin} />
+          <Text style={[styles.rewardText, icon === 'gem' && { color: '#9FD0FF' }]}>{p.reward}</Text>
+          {extraText && <Text style={styles.extra}>{extraText}</Text>}
         </View>
       )}
     </View>
@@ -205,6 +307,19 @@ export function Wiggle({ on, children }: { on: boolean; children: React.ReactNod
 
 const styles = StyleSheet.create({
   fill_: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 },
+  tabs: { flexDirection: 'row', backgroundColor: UI.bg, borderRadius: 16, padding: 4 },
+  tab: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingVertical: 8 },
+  tabOn: { backgroundColor: UI.accent },
+  tabText: { color: UI.dim, fontSize: 16, fontWeight: '900' },
+  tabBadge: { backgroundColor: UI.danger, borderRadius: 9, minWidth: 18, paddingHorizontal: 5, height: 18, alignItems: 'center', justifyContent: 'center' },
+  tabBadgeText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  expire: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#2A2440', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
+  expireHot: { backgroundColor: '#3A1820', borderWidth: 1.5, borderColor: UI.danger },
+  expireText: { flex: 1, color: '#FFB4A8', fontSize: 13, fontWeight: '800' },
+  expireTime: { color: '#FF7A6E', fontSize: 16, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  missed: { color: UI.dim, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  bigTag: { alignSelf: 'flex-start', backgroundColor: '#4FA3FF', color: '#fff', fontSize: 10, fontWeight: '900', borderRadius: 6, paddingHorizontal: 6, overflow: 'hidden' },
+  extra: { color: '#9FD0FF', fontWeight: '900', fontSize: 11 },
   backdrop: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,10,20,0.7)' },
   card: { position: 'absolute', left: 14, right: 14, top: 70, backgroundColor: '#1C2E4A', borderRadius: 26, padding: 16, gap: 10, borderWidth: 3, borderColor: '#56CCF2' },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },

@@ -6,6 +6,7 @@
 import { Booster } from './monetization';
 import { Key, t } from '../i18n';
 import { hashSeed, mulberry32 } from './rng';
+import { GEM_REWARD, gemPriceFor } from './prices';
 
 /** car = otoparktaki araç stili/kaplaması, garage = garaja giren özel araba */
 export type ItemKind = 'booster' | 'car' | 'rider' | 'theme' | 'stop' | 'fx' | 'garage';
@@ -147,6 +148,7 @@ export const SET_BONUS: Record<Exclude<ItemKind, 'booster'>, number> = {
 /** Marketin dokunduğu ilerleme alanları */
 export interface Wallet {
   coins: number;
+  gems: number;
   boosters: Record<Booster, number>;
   owned: string[];
   cosmetics: Cosmetics;
@@ -214,7 +216,7 @@ export function priceFor(w: Pick<Wallet, 'owned'>, item: MarketItem, dayKey: str
 
 export type BuyResult =
   | { ok: true; wallet: Wallet; setBonus: number }
-  | { ok: false; reason: 'coins' | 'owned' | 'unknown' };
+  | { ok: false; reason: 'coins' | 'gems' | 'owned' | 'unknown' };
 
 function addBoosters(b: Record<Booster, number>, add: Record<Booster, number>) {
   (Object.keys(add) as Booster[]).forEach((k) => (b[k] += add[k]));
@@ -226,7 +228,8 @@ function withSetBonus(w: Wallet, kind: ItemKind): { wallet: Wallet; bonus: numbe
   const c = collectionCount(w, kind);
   if (c.owned < c.total) return { wallet: w, bonus: 0 };
   const bonus = SET_BONUS[kind];
-  return { wallet: { ...w, coins: w.coins + bonus, setsClaimed: [...w.setsClaimed, kind] }, bonus };
+  const gems = GEM_REWARD.set[kind] ?? 0;
+  return { wallet: { ...w, coins: w.coins + bonus, gems: w.gems + gems, setsClaimed: [...w.setsClaimed, kind] }, bonus };
 }
 
 /** Kozmetiği cüzdana ekle: kozmetik hemen kullanılır, garaj arabası garaja girer. */
@@ -250,6 +253,19 @@ export function buyItem(w: Wallet, id: string, dayKey?: string): BuyResult {
     return { ok: true, wallet: next, setBonus: 0 };
   }
   next = grant(next, item);
+  const s = withSetBonus(next, item.kind);
+  return { ok: true, wallet: s.wallet, setBonus: s.bonus };
+}
+
+/** Destansı / efsane kozmetik ve özel garaj arabası elmasla da alınabilir. */
+export function buyItemWithGems(w: Wallet, id: string): BuyResult {
+  const item = itemById(id);
+  if (!item) return { ok: false, reason: 'unknown' };
+  const price = gemPriceFor(item);
+  if (price === null) return { ok: false, reason: 'unknown' };
+  if (ownsItem(w, item)) return { ok: false, reason: 'owned' };
+  if (w.gems < price) return { ok: false, reason: 'gems' };
+  const next = grant({ ...w, gems: w.gems - price }, item);
   const s = withSetBonus(next, item.kind);
   return { ok: true, wallet: s.wallet, setBonus: s.bonus };
 }
@@ -307,6 +323,8 @@ export function openMysteryBox(w: Wallet, rnd: () => number = Math.random): BoxR
 
 export interface Gift {
   coins: number;
+  gems?: number;
+  tickets?: number;
   boosters?: Partial<Record<Booster, number>>;
 }
 
@@ -315,10 +333,10 @@ export const GIFTS: Gift[] = [
   { coins: 50 },
   { coins: 80 },
   { coins: 40, boosters: { hint: 1 } },
-  { coins: 120 },
+  { coins: 120, tickets: 1 },
   { coins: 60, boosters: { crane: 1 } },
   { coins: 200 },
-  { coins: 300, boosters: { extraSlot: 1 } },
+  { coins: 300, gems: 5, boosters: { extraSlot: 1 } },
 ];
 
 export interface GiftState {
@@ -347,8 +365,12 @@ export function claimGift(w: Wallet, g: GiftState, today: string): { wallet: Wal
   const got = giftFor(streak);
   const boosters = { ...w.boosters };
   for (const [k, v] of Object.entries(got.boosters ?? {}) as [Booster, number][]) boosters[k] += v;
-  return { wallet: { ...w, coins: w.coins + got.coins, boosters }, gift: { day: today, streak }, got };
+  return {
+    wallet: { ...w, coins: w.coins + got.coins, gems: w.gems + (got.gems ?? 0), boosters },
+    gift: { day: today, streak },
+    got,
+  };
 }
 
 /** Markete yeni ürün gelince artırılır: "yenilik var" ışığı yanar */
-export const MARKET_VERSION = 2;
+export const MARKET_VERSION = 3;

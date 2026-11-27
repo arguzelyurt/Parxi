@@ -4,10 +4,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AdState, Booster, initialAdState } from '../core/monetization';
 import type { MissionState } from '../core/missions';
+import type { WeeklyState } from '../core/weekly';
+import type { LogEntry } from '../core/wallet';
 import { Cosmetics, DEFAULT_COSMETICS, GiftState } from '../core/market';
 import { initialLives, Lives } from '../core/lives';
 import { LangSetting, t } from '../i18n';
 import { CAR_MODELS } from '../core/garage';
+import { sectionOf } from '../core/maps';
 import { hasNativeModule } from '../services/native';
 
 export type Speed = 'slow' | 'normal' | 'fast';
@@ -20,6 +23,12 @@ export interface Progress {
   version: 2;
   level: number;
   coins: number;
+  /** Elmas (değerli para) ve park bileti (sandık / çark parası) */
+  gems: number;
+  tickets: number;
+  /** Son 200 para hareketi (nedeniyle) */
+  walletLog: LogEntry[];
+  /** Elmas kumbarası (her seviyede 1 elmas birikir; satın alınca kırılır) */
   piggy: number;
   stars: Record<string, number>;
   boosters: Record<Booster, number>;
@@ -71,6 +80,20 @@ export interface Progress {
   processedPurchases: string[];
   /** Günün görevleri (gün değişince yenilenir) */
   missions: MissionState | null;
+  /** Haftalık görevler */
+  weekly: WeeklyState | null;
+  /** Günlük Otopark seri koruyucuları (en çok 3) */
+  streakShield: number;
+  /** Süreli güçler: sınırsız can ve coin x2 (bitiş anı, 0 = yok) */
+  boosts: { infiniteLivesUntil: number; coinX2Until: number };
+  /** Şans çarkının bedava çevrildiği son yerel gün */
+  wheelDay: string | null;
+  /** Reklamla para: bugünkü sayı */
+  adMoney: { day: string; count: number };
+  /** Açılış töreni gösterilip ödülü verilmiş kısımlar (1, 2, …) */
+  sectionsClaimed: number[];
+  /** Ekonomi sürümü: eski kayıtlar bir kez taşınır */
+  economyV: number;
   /** Bildirim izni bir kez soruldu mu */
   notifAsked: boolean;
   /** Saat geri alma hilesine karşı: en son görülen zaman */
@@ -90,6 +113,9 @@ export const defaultProgress = (): Progress => ({
   version: 2,
   level: 1,
   coins: 100,
+  gems: 20,
+  tickets: 1,
+  walletLog: [],
   piggy: 0,
   stars: {},
   boosters: { undo: 5, hint: 3, crane: 2, extraSlot: 1 },
@@ -120,6 +146,13 @@ export const defaultProgress = (): Progress => ({
   removeAdsPrompted: false,
   processedPurchases: [],
   missions: null,
+  weekly: null,
+  streakShield: 0,
+  boosts: { infiniteLivesUntil: 0, coinX2Until: 0 },
+  wheelDay: null,
+  adMoney: { day: todayUTC(), count: 0 },
+  sectionsClaimed: [],
+  economyV: 1,
   notifAsked: false,
   lastSeenAt: Date.now(),
 });
@@ -180,6 +213,22 @@ function parseProgress(raw: string): Progress {
   if (!(p.speed in SPEED_MS)) p.speed = 'normal';
   if (!['auto', 'tr', 'en'].includes(p.lang)) p.lang = 'auto';
   p.ads = { ...initialAdState(todayUTC()), ...saved.ads, firstSession: !saved.ads };
+  p.boosts = { ...d.boosts, ...saved.boosts };
+  p.adMoney = { ...d.adMoney, ...saved.adMoney };
+  if (!Array.isArray(p.walletLog)) p.walletLog = [];
+  if (!Array.isArray(p.sectionsClaimed)) p.sectionsClaimed = [];
+  // Ekonomi v1'e taşıma: elmas ve bilet başlangıç bakiyesi; coin kumbarası elmas kumbarasına döner;
+  // geçilmiş kısımların töreni gösterilmez (ödülleri bir kez topluca verilir)
+  if (!saved.economyV) {
+    p.gems = 20;
+    p.tickets = 1;
+    p.piggy = Math.min(300, Math.round((Number(saved.piggy) || 0) / 10));
+    p.economyV = 1;
+    p.sectionsClaimed = Array.from({ length: sectionOf(p.level) }, (_, i) => i + 1);
+  }
+  p.gems = Math.max(0, Number(p.gems) || 0);
+  p.tickets = Math.max(0, Number(p.tickets) || 0);
+  p.streakShield = Math.max(0, Math.min(3, Number(p.streakShield) || 0));
   return p;
 }
 
