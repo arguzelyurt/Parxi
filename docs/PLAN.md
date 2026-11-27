@@ -135,6 +135,7 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [ ] Sandıklar (Bronz/Gümüş/Altın) + Şans Çarkı; gizemli kutu Gümüş sandık açar
 - [ ] Haftalık görevler; günlük ödül gün bitince silinir, geri sayım ve uyarı
 - [ ] Önceki 3 dünyanın tüm seviyeleri bitince sonraki 3 açılır; harita yukarıdan aşağı; açılış töreni
+- [ ] Hareketli harita "Katlı otopark": her harita bir kat, rampada garaj arabaları, kat içinde her seviye bir park yeri (aktif / bitmiş / kilitli / tamamlandı) · ayrıntı: docs/PLAN-HARITA.md
 - Tasarımlar: https://claude.ai/artifact/45oxcLkAQ2uAW5gZWCqs8m
 
 ### Faz 5 — Hesap ve bulut kayıt · ayrıntı: docs/HESAP.md
