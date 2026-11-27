@@ -44,7 +44,7 @@ export function ChestsPage(p: {
   onAdMoney(kind: 'coins' | 'tickets'): Promise<boolean>;
   onNeed(kind: 'coins' | 'gems' | 'tickets'): void;
 }) {
-  const [open, setOpen] = useState<{ look: ChestLook; title: string; reward: Reward } | null>(null);
+  const [open, setOpen] = useState<{ look: ChestLook; title: string; reward: Reward; instant?: boolean } | null>(null);
   const [odds, setOdds] = useState<ChestKind | null>(null);
   const [adBusy, setAdBusy] = useState(false);
 
@@ -80,7 +80,7 @@ export function ChestsPage(p: {
           })}
         </View>
 
-        <Wheel free={p.wheelFree} tickets={p.money.tickets} onSpin={p.onSpin} onNeed={() => p.onNeed('tickets')} onReward={(r) => setOpen({ look: 'plain', title: t('wheel.title').toUpperCase(), reward: r })} />
+        <Wheel free={p.wheelFree} tickets={p.money.tickets} onSpin={p.onSpin} onNeed={() => p.onNeed('tickets')} onReward={(r) => setOpen({ look: 'plain', title: t('wheel.title').toUpperCase(), reward: r, instant: true })} />
 
         <Pressable
           onPress={() => {
@@ -129,7 +129,7 @@ export function ChestsPage(p: {
       <Sheet visible={!!odds} onClose={() => setOdds(null)}>
         {odds && <OddsSheet kind={odds} />}
       </Sheet>
-      {open && <ChestOpen look={open.look} title={open.title} reward={open.reward} onClose={() => setOpen(null)} />}
+      {open && <ChestOpen look={open.look} title={open.title} reward={open.reward} instant={open.instant} onClose={() => setOpen(null)} />}
     </View>
   );
 }

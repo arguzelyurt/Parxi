@@ -77,11 +77,10 @@ Plays offline. No account needed.
 | ID | Name | Description |
 |---|---|---|
 | parxi.remove_ads | Ad-free | Removes interstitial ads + 500 coins |
-| parxi.supporter | Supporter pack | Ad-free + rewards without watching ads |
-| parxi.starter_pack | Starter pack | 800 coins + 3 "+1 Slot" + 3 "Crane" |
-| parxi.rescue | Rescue pack | 2 "+1 Slot" + 1 Hint |
-| parxi.piggy_bank | Piggy bank | All coins saved in your piggy bank |
-| parxi.coins_500 … coins_16000 | 500 / 1,800 / 5,500 / 16,000 coins | |
+| parxi.supporter | Supporter pack | Ad-free + rewards without watching ads + 500 gems |
+| parxi.starter_pack | Starter pack | 300 gems + 2,000 coins + 3 parking tickets + boosters |
+| parxi.piggy_bank | Gem piggy bank | All gems saved in your piggy bank (up to 300) |
+| parxi.gems_80 … gems_2800 | 80 / 500 / 1,200 / 2,800 gems | |
 
 ---
 
@@ -164,14 +163,17 @@ ADİL REKLAM SÖZÜ
 | Kimlik | Tür | Ad | Fiyat (USD, karşılık gelen kademe) | İçerik |
 |---|---|---|---|---|
 | parxi.remove_ads | Tüketilmeyen | Reklamsız | 4,99 | Geçiş reklamları kalkar + 500 coin |
-| parxi.supporter | Tüketilmeyen | Destekçi paketi | 9,99 | Reklamsız + ödülleri reklam izlemeden al |
-| parxi.starter_pack | Tüketilen | Başlangıç paketi | 1,99 | 800 coin + 3 "+1 Yer" + 3 "Vinç" |
-| parxi.rescue | Tüketilen | Kurtarma paketi | 0,99 | 2 "+1 Yer" + 1 İpucu |
-| parxi.piggy_bank | Tüketilen | Kumbara | 2,99 | Kumbaradaki coin'ler |
-| parxi.coins_500 | Tüketilen | 500 coin | 0,99 | |
-| parxi.coins_1800 | Tüketilen | 1.800 coin | 2,99 | |
-| parxi.coins_5500 | Tüketilen | 5.500 coin | 7,99 | |
-| parxi.coins_16000 | Tüketilen | 16.000 coin | 19,99 | |
+| parxi.supporter | Tüketilmeyen | Destekçi paketi | 9,99 | Reklamsız + ödülleri reklam izlemeden al + 500 elmas (bir kez) |
+| parxi.starter_pack | Tüketilen | Başlangıç paketi | 1,99 | 300 elmas + 2.000 coin + 3 park bileti + güçlendiriciler (tek sefer) |
+| parxi.piggy_bank | Tüketilen | Elmas kumbarası | 2,99 | Kumbarada biriken elmaslar (seviye başına 1, en çok 300) |
+| parxi.gems_80 | Tüketilen | 80 elmas | 0,99 | |
+| parxi.gems_500 | Tüketilen | 500 elmas | 4,99 | |
+| parxi.gems_1200 | Tüketilen | 1.200 elmas | 9,99 | |
+| parxi.gems_2800 | Tüketilen | 2.800 elmas | 19,99 | |
+
+**Kaldırılanlar:** `parxi.rescue` ve `parxi.coins_*` artık satılmaz. App Store Connect'te açıldılarsa "satıştan kaldır" yapılır; yarım kalmış bir satın alma gelirse uygulama yine işler (eski içerik). Coin ve bilet doğrudan satılmaz: coin elmas takasıyla (10 elmas = 500 coin), bilet oynayarak kazanılır.
+
+**Sandık ve çark olasılıkları** uygulamada her sandığın "Olasılıklar" bağlantısında ve çarkın yanında yazar (App Store kuralı 3.1.1).
 
 Türkiye fiyatlarını mağazaların otomatik kademesinden seçmek yeterli. İnceleme için her ürüne bir ekran görüntüsü (dükkan ekranı) ve kısa açıklama gerekiyor.
 

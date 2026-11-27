@@ -730,7 +730,8 @@ export default function App() {
                       onPlay={() => playLevel()}
                       onPlayLevel={(lv) => playLevel(lv)}
                       onShop={() => money.openShop()}
-                      newFrom={mapSeenAtOpen}
+                      newFrom={progress.seenMapLevel}
+                      onSection={sectionClaim}
                     />
                   )}
                   {tab === 'daily' && (

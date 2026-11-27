@@ -111,7 +111,7 @@ export default function DailyScreen({ progress, todayKey, onPlay, onShop, onGem 
             <Btn label={`💎 ${GEM_COST.shield}  ·  ${t('daily.buyShield')}`} onPress={() => onGem('shield') || onShop()} />
           )}
           <Text style={[kit.cardSub, { fontSize: 13 }]}>
-            💎 7. gün +{GEM_REWARD.streak7} · 30. gün +{GEM_REWARD.streak30}
+            {t('daily.gemMilestones', { a: GEM_REWARD.streak7, b: GEM_REWARD.streak30 })}
           </Text>
         </Card>
 

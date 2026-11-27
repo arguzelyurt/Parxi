@@ -1,6 +1,8 @@
 # Parxi — Çoklu Para, Haftalık Görevler, Sandıklar ve Ekonomi Planı
 
-27 Kasım 2026. **Durum:** plan ve tasarım hazır; geliştirme için kullanıcının onayı bekleniyor.
+27 Kasım 2026. **Durum:** E1–E6 geliştirildi (kod ve testler). Kalan: App Store Connect ürünleri ve telefonda denge ayarı.
+
+**Uygulamadaki dosyalar:** `src/core/prices.ts` (bütün fiyat ve ödüller), `wallet.ts`, `chests.ts`, `weekly.ts`, `time.ts`, `src/game/economy.ts` (kayıt üzerinde işlemler), `src/ui/MarketExtras.tsx`, `ChestOpen.tsx`. Not: cüzdan ayrı bir `wallet` nesnesi yerine kayıtta `coins`, `gems`, `tickets` alanları olarak tutuldu (eski kayıtlar bozulmadan); hareketler `walletLog` içinde.
 
 **Tasarımlar:** "Parxi — Ekonomi, Görevler ve Sandık Tasarımları" (Design tuvali, 8 ekran):
 1. Ana sayfa (3 para sayacı)

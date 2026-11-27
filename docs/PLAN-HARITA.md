@@ -3,7 +3,7 @@
 Onaylanan tasarım: A (Oyuncak şehir) + D (Katlı otopark) harmanı.
 Tasarımlar: https://claude.ai/artifact/45oxcLkAQ2uAW5gZWCqs8m ("A + D harmanı" satırı; karşılaştırma için mevcut harita ekran görüntüleri de orada)
 
-Durum: **planlandı, geliştirme onayı bekleniyor.** Faz 4.9 ekonomi planıyla (docs/PLAN-EKONOMI.md) birlikte yürür; "önceki 3 dünya bitince sonraki 3 açılır" ve "harita yukarıdan aşağı" kuralları buradaki düzene uygulanır.
+Durum: **H1–H3 geliştirildi** (`src/ui/MapScreen.tsx`, `FloorView.tsx`, `anim.tsx`). Kat kartlarına "sıradaki kat" durumu eklendi (açık ama daha gelinmemiş kat). Kalan: H4 telefonda deneme. Faz 4.9 ekonomi planıyla (docs/PLAN-EKONOMI.md) birlikte yürür; "önceki 3 dünya bitince sonraki 3 açılır" ve "harita yukarıdan aşağı" kuralları buradaki düzene uygulanır.
 
 ## Neden
 Şu anki harita tek uzun kaydırmalı yol: büyük düğümler, araya giren başlık ve ödül kartları, durağan. İstenen: daha küçük ama hareketli, dikkat çeken bir harita.

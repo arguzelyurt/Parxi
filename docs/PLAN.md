@@ -129,13 +129,15 @@ renk en dipte kalmışsa önce önündekileri durağa almak gerekir, ama durak s
 - [x] Hareketli renkli Parxi logosu, çizim sekme ikonları (seçilince zıplar), garajda nadirlik renkli kartlar
 - [ ] Yapay zekâyla üretilmiş gerçekçi araba görselleri (istenirse aynı adla assets/cars/ içine konur)
 
-### Faz 4.9 — Çoklu para, haftalık görevler, harita akışı (planlandı) · ayrıntı: docs/PLAN-EKONOMI.md
-- [ ] Üç para: Coin (var), Elmas (yeni), Park Bileti (yeni); "para seviyeyi satın almaz"
-- [ ] Elmas harcamaları: tıkanınca devam, sınırsız can, coin x2, seri kalkanı/onarma, özel arabalar, tek yön takas
-- [ ] Sandıklar (Bronz/Gümüş/Altın) + Şans Çarkı; gizemli kutu Gümüş sandık açar
-- [ ] Haftalık görevler; günlük ödül gün bitince silinir, geri sayım ve uyarı
-- [ ] Önceki 3 dünyanın tüm seviyeleri bitince sonraki 3 açılır; harita yukarıdan aşağı; açılış töreni
-- [ ] Hareketli harita "Katlı otopark": her harita bir kat, rampada garaj arabaları, kat içinde her seviye bir park yeri (aktif / bitmiş / kilitli / tamamlandı) · ayrıntı: docs/PLAN-HARITA.md
+### Faz 4.9 — Çoklu para, haftalık görevler, Katlı otopark haritası (geliştirildi, 27 Kasım 2026) · ayrıntı: docs/PLAN-EKONOMI.md
+- [x] Üç para: Coin (var), Elmas (yeni), Park Bileti (yeni); "para seviyeyi satın almaz"
+- [x] Elmas harcamaları: tıkanınca devam, sınırsız can, coin x2, seri kalkanı/onarma, özel arabalar, tek yön takas
+- [x] Sandıklar (Bronz/Gümüş/Altın) + Şans Çarkı; gizemli kutu Gümüş sandık açar
+- [x] Haftalık görevler; günlük ödül gün bitince silinir, geri sayım ve uyarı
+- [x] Önceki 3 dünyanın tüm seviyeleri bitince sonraki 3 açılır; harita yukarıdan aşağı; açılış töreni
+- [x] Hareketli harita "Katlı otopark": her harita bir kat, rampada garaj arabaları, kat içinde her seviye bir park yeri (aktif / bitmiş / kilitli / tamamlandı) · ayrıntı: docs/PLAN-HARITA.md
+- [ ] App Store Connect'te elmas ürünlerini açmak, eski coin ürünlerini satıştan kaldırmak (docs/STORE.md)
+- [ ] Telefonda deneme ve ekonomi dengesinin ayarı (Analytics `wallet` olayları)
 - Tasarımlar: https://claude.ai/artifact/45oxcLkAQ2uAW5gZWCqs8m
 
 ### Faz 5 — Hesap ve bulut kayıt · ayrıntı: docs/HESAP.md

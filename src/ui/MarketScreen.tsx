@@ -87,7 +87,7 @@ const CATS: { kind: ItemKind; icon: string }[] = [
   { kind: 'stop', icon: '🚏' },
   { kind: 'fx', icon: '🎆' },
 ];
-const catTitle = (k: Cat) => (k === 'car' ? t('market.cat.car') : k === 'chests' ? t('market.chests') : k === 'gems' ? t('money.gems') : t(`market.tab.${k}` as Key));
+const catTitle = (k: Cat) => (k === 'car' ? t('market.cat.car') : k === 'chests' ? t('market.chestsShort') : k === 'gems' ? t('money.gems') : t(`market.tab.${k}` as Key));
 const BOOSTERS: Booster[] = ['undo', 'hint', 'crane', 'extraSlot'];
 const BOOSTER_ICON: Record<string, string> = { undo: '↶', hint: '💡', crane: '🏗', extraSlot: '＋' };
 const ITEM_ICON: Partial<Record<string, string>> = {

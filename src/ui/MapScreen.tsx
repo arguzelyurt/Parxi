@@ -1,35 +1,55 @@
-// Seviye haritası (Candy Crush tarzı): her bölüm kendi temalı zemininde, seviyeler kıvrımlı bir yol
-// üzerinde. Haritalar 3'erli kısımlar hâlinde açılır; sonraki kısım bulutların altında kilitli görünür.
+// Harita: "Parxi Otoparkı". Her harita bir kat; katlar yukarıdan aşağı dizilir, oyuncu aşağı iner.
+// Sağdaki rampada oyuncunun garajındaki arabalar kattan kata iner. Bulunduğun katta vitrin araban
+// zıplar. Kata dokununca kat içi açılır (FloorView): her seviye bir park yeri.
+// Haritalar 3'erli kısımlar hâlinde açılır; yeni kısım açılınca bir kez tören yapılır (Altın sandık + 2 bilet).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, Pressable, ScrollView, ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { Image, Pressable, ScrollView, ScrollViewInstance, StyleSheet, View } from 'react-native';
 import { Text } from './Text';
-import { allMaps, MapInfo, mapOfLevel, mapReward } from '../core/maps';
-import { carByKey } from '../core/garage';
-import { Booster } from '../core/monetization';
+import { allMaps, MapInfo, mapOfLevel, pendingSection, SECTION_SIZE } from '../core/maps';
+import { CAR_MODELS, carByKey, CarModel, SPECIAL_CARS } from '../core/garage';
+import type { Reward } from '../core/chests';
+import { TICKET_REWARD } from '../core/prices';
 import { UI } from '../game/palette';
-import { GROUP, themeOfMap, visibleMapCount } from '../game/mapThemes';
+import { visibleMapCount } from '../game/mapThemes';
 import { Progress } from '../game/storage';
 import { Key, t } from '../i18n';
 import CarArt from './CarArt';
-import { ICONS, MAP_PROPS } from './icons';
-import { Btn, TabHeader, TextLink } from './kit';
+import ChestOpen from './ChestOpen';
+import FloorView, { FloorMode } from './FloorView';
+import { ICONS } from './icons';
+import { TabHeader } from './kit';
 import { useLayout } from './layout';
-import Sheet from './Sheet';
+import { Blink, Bob, Drift, PathMover, Pop, Shake } from './anim';
 
-const BOOSTER_ICON: Record<Booster, string> = { undo: '↶', hint: '💡', crane: '🏗', extraSlot: '＋' };
-const HEAD = 96;
-const ROW = 92;
-const FOOT = 110;
-const NODE = 58;
+export const FLOOR_H = 112;
+const GAP = 22;
+const DIV_H = 64;
+const RAMP_W = 64;
+export const CAR_COLORS = ['#E8453C', '#3A86FF', '#3BCE7A', '#FFB020', '#B04CFF', '#56CCF2', '#FF4D9A'];
 
-const sectionHeight = (m: MapInfo) => HEAD + m.size * ROW + FOOT;
+export const mapName = (m: MapInfo) => t(`map.${m.key}` as Key);
+export const floorLabel = (m: MapInfo) => t('map.floor', { n: m.index + 1 });
+
+/** Garajda gerçekten olan arabalar (rampada ve kat yolunda dolaşanlar): son açılanlar önce */
+export function garageCars(p: Progress, n = 4): CarModel[] {
+  const done = Math.max(1, p.level - 1);
+  const have = [
+    ...CAR_MODELS.filter((m) => m.level <= done),
+    ...SPECIAL_CARS.filter((m) => p.owned.includes(`garage:${m.key}`)),
+  ];
+  const fav = carByKey(p.favoriteCar);
+  const rest = have.filter((m) => m.key !== fav.key).reverse();
+  return rest.length ? rest.slice(0, n) : [fav];
+}
+
+type Item = { kind: 'floor'; m: MapInfo; y: number; locked: boolean } | { kind: 'div'; section: number; maps: MapInfo[]; y: number };
 
 export default function MapScreen({
   progress,
   onPlay,
   onPlayLevel,
-  onShop,
   newFrom,
+  onSection,
 }: {
   progress: Progress;
   onPlay(): void;
@@ -38,371 +58,327 @@ export default function MapScreen({
   onShop(): void;
   /** Bu seviyeden sonra açılanlar "yeni" (haritaya son bakıştan beri) */
   newFrom: number;
+  /** Kısım açılış ödülü (bir kez); sonuç ekranda gösterilir */
+  onSection(section: number): Reward | null;
 }) {
-  const { width, height } = useLayout();
-  const [pick, setPick] = useState<number | null>(null);
+  const { width } = useLayout();
   const all = allMaps();
   const current = mapOfLevel(progress.level).index;
-  const shown = all.slice(0, visibleMapCount(current, all.length));
-  const nextGroup = all.slice(shown.length, shown.length + GROUP);
+  const shownCount = visibleMapCount(current, all.length);
+  const locked = all.slice(shownCount, shownCount + SECTION_SIZE);
   const scroll = useRef<ScrollViewInstance>(null);
 
-  // Açılışta şu anki seviyeye kaydır
-  const targetY = useMemo(() => {
-    let y = 0;
-    for (const m of shown) {
-      if (m.index === current) return y + HEAD + (progress.level - m.first) * ROW - height * 0.35;
-      y += sectionHeight(m);
-    }
-    return 0;
-  }, [shown, current, progress.level, height]);
+  // Az önce biten kat: tamamlama anı bir kez (sekmeye girince)
+  const justDone = useMemo(() => {
+    const m = current > 0 ? all[current - 1] : null;
+    return m && m.last >= newFrom && m.last < progress.level ? m.index : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [floor, setFloor] = useState<{ index: number; mode: FloorMode } | null>(justDone !== null ? { index: justDone, mode: 'complete' } : null);
+  const pending = pendingSection(progress.level, progress.sectionsClaimed);
+  const [ceremony, setCeremony] = useState<{ section: number; reward: Reward } | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+
+  // Düzen: katlar ve kısım ayraçları (y konumları rampa için)
+  const items = useMemo(() => {
+    const out: Item[] = [];
+    let y = 12;
+    const list = [...all.slice(0, shownCount), ...locked];
+    list.forEach((m, i) => {
+      if (i > 0 && m.index % SECTION_SIZE === 0) {
+        const s = m.index / SECTION_SIZE;
+        out.push({ kind: 'div', section: s, maps: all.slice(m.index, m.index + SECTION_SIZE), y });
+        y += DIV_H + GAP;
+      }
+      out.push({ kind: 'floor', m, y, locked: m.index >= shownCount });
+      y += FLOOR_H + GAP;
+    });
+    return { list: out, height: y };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownCount, all.length]);
+
+  const curItem = items.list.find((it) => it.kind === 'floor' && it.m.index === current);
+  const scrollTo = (y: number) => setTimeout(() => scroll.current?.scrollTo({ y: Math.max(0, y - 160), animated: true }), 80);
   useEffect(() => {
-    const id = setTimeout(() => scroll.current?.scrollTo({ y: Math.max(0, targetY), animated: false }), 60);
+    if (curItem) scrollTo(curItem.y);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Kısım töreni: kat ekranı kapalıyken, bekleyen kısım varsa
+  useEffect(() => {
+    if (floor || pending === null || ceremony || unlocking) return;
+    const div = items.list.find((it) => it.kind === 'div' && it.section === pending);
+    if (div) scrollTo(div.y);
+    setUnlocking(true);
+    const id = setTimeout(() => {
+      const r = onSection(pending);
+      setUnlocking(false);
+      if (r) setCeremony({ section: pending, reward: r });
+    }, 1300);
     return () => clearTimeout(id);
-  }, [targetY]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floor, pending]);
+
+  const rampX = width - RAMP_W / 2 - 8;
+  const cardW = width - 16 - RAMP_W - 12;
+  const floorsY = items.list.filter((it) => it.kind === 'floor').map((it) => it.y + FLOOR_H / 2);
+  // Zikzak rampa: her katın hizasında bir sağa bir sola
+  const rampPts: [number, number][] = [[rampX, 0], ...floorsY.map((y, i): [number, number] => [rampX + (i % 2 ? 12 : -12), y]), [rampX, items.height]];
+  const cars = garageCars(progress, 3);
+
+  if (floor) {
+    const m = all[floor.index];
+    return (
+      <FloorView
+        m={m}
+        mode={floor.mode}
+        progress={progress}
+        onBack={() => {
+          setFloor(null);
+          if (curItem) scrollTo(curItem.y);
+        }}
+        onPlay={onPlay}
+        onPlayLevel={onPlayLevel}
+        onGoCurrent={() => setFloor({ index: current, mode: 'active' })}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
-      <TabHeader title={t('map.title')} money={progress} />
-      <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 24 }}>
-        {shown.map((m) => (
-          <Section
-            key={m.index}
-            m={m}
-            width={width}
-            progress={progress}
-            isNew={m.index === current && m.first > newFrom}
-            newFrom={newFrom}
-            onPlay={onPlay}
-            onPick={setPick}
-          />
-        ))}
-        {nextGroup.length > 0 && <Clouds width={width} next={nextGroup} lastShown={shown[shown.length - 1]} />}
-      </ScrollView>
-
-      <Sheet visible={pick !== null} onClose={() => setPick(null)}>
-        {pick !== null && (
-          <>
-            <Text style={styles.sheetTitle}>{t('common.level', { n: pick })}</Text>
-            <Text style={styles.sheetStars}>
-              {'★'.repeat(progress.stars[`L${pick}`] ?? 0)}
-              <Text style={{ color: UI.panelHi }}>{'★'.repeat(3 - (progress.stars[`L${pick}`] ?? 0))}</Text>
-            </Text>
-            <Text style={styles.sheetSub}>
-              {(progress.stars[`L${pick}`] ?? 0) >= 3 ? t('map.replayPerfect') : t('map.replayMore')}
-            </Text>
-            <View style={{ height: 8 }} />
-            <Btn
-              label={t('map.replay')}
-              primary
-              onPress={() => {
-                const n = pick;
-                setPick(null);
-                onPlayLevel(n);
-              }}
-            />
-            <TextLink label={t('common.close')} onPress={() => setPick(null)} />
-          </>
-        )}
-      </Sheet>
-    </View>
-  );
-}
-
-/** Basit sözde-rastgele (aynı harita hep aynı görünür) */
-const rnd = (a: number, b: number) => {
-  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-  return x - Math.floor(x);
-};
-
-function Section(p: {
-  m: MapInfo;
-  width: number;
-  progress: Progress;
-  isNew: boolean;
-  newFrom: number;
-  onPlay(): void;
-  onPick(n: number): void;
-}) {
-  const { m, width: W, progress } = p;
-  const theme = themeOfMap(m.key);
-  const H = sectionHeight(m);
-  const claimed = progress.mapsClaimed.includes(m.index);
-  const reward = mapReward(m.index);
-  const done = progress.level > m.last;
-  const amp = W * 0.27;
-  const waterW = W * 0.2;
-  const center = theme.water === 'left' ? W / 2 + waterW / 2 : theme.water === 'right' ? W / 2 - waterW / 2 : W / 2;
-  const nodes = Array.from({ length: m.size }, (_, i) => {
-    const lv = m.first + i;
-    const x = center + Math.sin(i * 0.9 + m.index * 1.7) * amp * (theme.water ? 0.8 : 1);
-    const y = HEAD + i * ROW + ROW / 2;
-    return { lv, x, y };
-  });
-  const dark = theme.ground[1] === '#0C0E2A' || theme.ground[1] === '#140C33' || theme.ground[1] === '#22184A';
-
-  return (
-    <View style={{ width: W, height: H, overflow: 'hidden' }}>
-      {/* zemin: üstten alta iki ton */}
-      {Array.from({ length: 8 }, (_, k) => (
-        <View
-          key={k}
-          style={{ position: 'absolute', left: 0, right: 0, top: (H / 8) * k, height: H / 8 + 1, backgroundColor: k < 4 ? theme.ground[0] : theme.ground[1], opacity: k < 4 ? 1 - k * 0.06 : 0.82 + (k - 4) * 0.045 }}
-        />
-      ))}
-      {/* doku: küçük çimen/kum noktaları ya da yıldızlar */}
-      {Array.from({ length: Math.round(H / 26) }, (_, k) => (
-        <View
-          key={`d${k}`}
-          style={{
-            position: 'absolute',
-            left: rnd(m.index, k) * W,
-            top: rnd(k, m.index + 3) * H,
-            width: dark ? 3 : 7,
-            height: dark ? 3 : 4,
-            borderRadius: 3,
-            backgroundColor: dark ? '#FFFFFF' : 'rgba(0,0,0,0.08)',
-            opacity: dark ? 0.6 * rnd(k, 9) + 0.2 : 1,
-          }}
-        />
-      ))}
-      {/* su şeridi */}
-      {theme.water && (
-        <View style={{ position: 'absolute', top: 0, bottom: 0, width: waterW, [theme.water]: 0, backgroundColor: '#3FA7E0' }}>
-          {Array.from({ length: Math.round(H / 60) }, (_, k) => (
-            <View key={k} style={{ position: 'absolute', top: k * 60 + 20, left: 10 + (k % 2) * 16, width: 26, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.55)' }} />
-          ))}
-        </View>
-      )}
-      {/* süsler: yolun boş tarafına */}
-      {nodes
-        .filter((_, i) => i % 2 === 1)
-        .map((n, k) => {
-          const onLeft = n.x > center;
-          const size = 86 + rnd(m.index, k) * 30;
-          const inWater = theme.water === (onLeft ? 'left' : 'right');
-          const prop = inWater ? 'boat' : theme.props[k % theme.props.length];
-          const left = onLeft ? 6 + rnd(k, 2) * 14 : W - size - 6 - rnd(k, 5) * 14;
-          return <Image key={`p${k}`} source={MAP_PROPS[prop]} style={{ position: 'absolute', left, top: n.y - size * 0.6, width: size, height: size }} />;
-        })}
-      {/* yol noktaları */}
-      {nodes.slice(0, -1).map((a, i) => {
-        const b = nodes[i + 1];
-        return Array.from({ length: 5 }, (_, k) => {
-          const tt = (k + 1) / 6;
-          const lv = a.lv;
-          const passed = lv < progress.level;
+      <TabHeader title={t('map.lot')} money={progress} />
+      <ScrollView ref={scroll} contentContainerStyle={{ height: items.height + 20 }}>
+        {/* Rampa */}
+        {rampPts.slice(1).map((b, i) => {
+          const a = rampPts[i];
+          const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          const ang = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
           return (
             <View
-              key={`${i}-${k}`}
-              style={{
-                position: 'absolute',
-                left: a.x + (b.x - a.x) * tt - 5,
-                top: a.y + (b.y - a.y) * tt - 5,
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: passed ? theme.path : 'rgba(255,255,255,0.45)',
-                borderWidth: 1.5,
-                borderColor: 'rgba(0,0,0,0.15)',
-              }}
-            />
+              key={i}
+              style={[styles.ramp, { left: (a[0] + b[0]) / 2 - len / 2 - 2, top: (a[1] + b[1]) / 2 - 15, width: len + 4, transform: [{ rotate: `${ang}deg` }] }]}
+            >
+              <View style={styles.rampLine} />
+            </View>
           );
-        });
-      })}
+        })}
+        {cars.map((c, i) => (
+          <PathMover
+            key={c.key}
+            fadeEnds
+            ms={Math.max(9000, items.height * 9)}
+            offset={i / cars.length}
+            points={rampPts.map((p, k) => {
+              const nx = rampPts[Math.min(k + 1, rampPts.length - 1)];
+              const ang = (Math.atan2(nx[1] - p[1], nx[0] - p[0]) * 180) / Math.PI;
+              return [p[0] - 18, p[1] - 9, k === rampPts.length - 1 ? 90 : ang, 1];
+            })}
+          >
+            <CarArt model={c} width={36} />
+          </PathMover>
+        ))}
+        {floorsY.slice(0, 1).map((y) => (
+          <Blink key="light" style={[styles.light, { left: rampX - 30, top: y - 60 }]}>
+            <View style={[styles.lamp, { backgroundColor: '#3BCE7A' }]} />
+          </Blink>
+        ))}
 
-      {/* başlık */}
-      <View style={[styles.banner, { backgroundColor: m.color }]}>
-        <Text style={styles.bannerIcon}>{m.icon}</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>
-            {m.index + 1}. {t(`map.${m.key}` as Key)}
-          </Text>
-          <Text style={styles.bannerSub}>{t('map.levels', { a: m.first, b: m.last })}</Text>
-        </View>
-        {done && <Text style={styles.bannerDone}>✓</Text>}
-        {p.isNew && <Text style={styles.newBadge}>{t('market.new')}</Text>}
-      </View>
+        {items.list.map((it) =>
+          it.kind === 'div' ? (
+            <Divider key={`d${it.section}`} section={it.section} maps={it.maps} y={it.y} w={cardW} claimed={progress.sectionsClaimed.includes(it.section)} open={it.maps[0].index < shownCount} />
+          ) : (
+            <FloorCard
+              key={it.m.index}
+              m={it.m}
+              y={it.y}
+              w={cardW}
+              progress={progress}
+              state={it.locked ? 'locked' : it.m.index < current ? 'done' : it.m.index === current ? 'current' : 'next'}
+              onOpen={() =>
+                setFloor({ index: it.m.index, mode: it.locked ? 'locked' : it.m.index < current ? 'done' : it.m.index === current ? 'active' : 'upcoming' })
+              }
+              onPlay={onPlay}
+            />
+          ),
+        )}
+        {locked.length > 0 && (
+          <>
+            <Drift from={-180} to={width + 40} ms={26000} style={[styles.cloud, { top: items.height - (FLOOR_H + GAP) * 2 - 30 }]}>
+              <View style={styles.cloudShape} />
+            </Drift>
+            <Drift from={-220} to={width + 40} ms={34000} offset={0.5} style={[styles.cloud, { top: items.height - FLOOR_H - 40 }]}>
+              <View style={[styles.cloudShape, { width: 240, height: 80 }]} />
+            </Drift>
+          </>
+        )}
+        <Text style={[styles.more, { top: items.height - 6 }]}>{t('map.more')}</Text>
+      </ScrollView>
 
-      {/* seviyeler */}
-      {nodes.map((n) => (
-        <LevelNode
-          key={n.lv}
-          lv={n.lv}
-          x={n.x}
-          y={n.y}
-          color={m.color}
-          state={n.lv < progress.level ? 'done' : n.lv === progress.level ? 'here' : 'next'}
-          stars={progress.stars[`L${n.lv}`] ?? 0}
-          car={n.lv === progress.level ? progress.favoriteCar : null}
-          fresh={n.lv === progress.level && n.lv > p.newFrom}
-          gift={n.lv === m.last}
-          giftTaken={claimed}
-          onPress={() => (n.lv === progress.level ? p.onPlay() : n.lv < progress.level ? p.onPick(n.lv) : undefined)}
+      {unlocking && pending !== null && <Unlocking section={pending} />}
+      {ceremony && (
+        <ChestOpen
+          look="gold"
+          title={t('section.title')}
+          reward={ceremony.reward}
+          onClose={() => {
+            setCeremony(null);
+            if (curItem) scrollTo(curItem.y);
+          }}
         />
-      ))}
-
-      {/* harita ödülü */}
-      <View style={[styles.reward, claimed && styles.rewardTaken]}>
-        <Image source={ICONS.chest} style={[styles.rewardChest, claimed && { opacity: 0.6 }]} />
-        <View style={styles.chips}>
-          <Chip text={`● ${reward.coins}`} gold={!claimed} />
-          {(Object.keys(reward.boosters) as Booster[]).map((k) => (
-            <Chip key={k} text={`${BOOSTER_ICON[k]} ${reward.boosters[k]}`} />
-          ))}
-        </View>
-        <Text style={[styles.rewardLabel, claimed && { color: UI.accent }]}>{claimed ? `✓ ${t('reward.taken')}` : t('reward.waiting')}</Text>
-      </View>
+      )}
     </View>
   );
 }
 
-function LevelNode(p: {
-  lv: number;
-  x: number;
-  y: number;
-  color: string;
-  state: 'done' | 'here' | 'next';
-  stars: number;
-  car: string | null;
-  fresh: boolean;
-  gift: boolean;
-  giftTaken: boolean;
-  onPress(): void;
-}) {
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (p.state !== 'here') return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [p.state, pulse]);
-  const size = p.state === 'here' ? NODE + 14 : NODE;
+function FloorCard(p: { m: MapInfo; y: number; w: number; progress: Progress; state: 'done' | 'current' | 'next' | 'locked'; onOpen(): void; onPlay(): void }) {
+  const { m, progress, state } = p;
+  const n = progress.level;
+  const doneCount = state === 'done' ? m.size : state === 'current' ? n - m.first : 0;
+  const starSum = Array.from({ length: m.size }, (_, i) => progress.stars[`L${m.first + i}`] ?? 0).reduce((a, b) => a + b, 0);
+  const claimed = progress.mapsClaimed.includes(m.index);
+  const look = LOOK[state];
   return (
-    <View style={{ position: 'absolute', left: p.x - size / 2, top: p.y - size / 2, width: size, alignItems: 'center' }}>
-      {p.state === 'here' && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.ring,
-            { width: size, height: size, borderRadius: size / 2, borderColor: '#FFFFFF' },
-            { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }] },
-          ]}
-        />
-      )}
-      <Pressable
-        disabled={p.state === 'next'}
-        onPress={p.onPress}
-        style={({ pressed }) => [
-          styles.node,
-          { width: size, height: size, borderRadius: size / 2 },
-          p.state === 'done' && { backgroundColor: p.color },
-          p.state === 'here' && { backgroundColor: '#FFFFFF', borderColor: p.color, borderWidth: 6 },
-          p.state === 'next' && styles.nodeNext,
-          pressed && { transform: [{ scale: 0.92 }] },
-        ]}
-      >
-        <Text style={[styles.nodeNum, p.state === 'here' && { color: UI.bg, fontSize: 22 }, p.state === 'next' && { color: 'rgba(255,255,255,0.75)' }]}>{p.lv}</Text>
-      </Pressable>
-      {p.state === 'done' && (
-        <Text style={styles.nodeStars}>
-          {'★'.repeat(p.stars)}
-          <Text style={{ color: 'rgba(0,0,0,0.3)' }}>{'★'.repeat(3 - p.stars)}</Text>
+    <Pressable onPress={p.onOpen} style={({ pressed }) => [styles.card, { top: p.y, width: p.w, backgroundColor: look.bg, borderColor: look.border }, pressed && { opacity: 0.9 }]}>
+      <View style={styles.cardHead}>
+        <View style={styles.kat}>
+          <Text style={styles.katText}>{floorLabel(m)}</Text>
+        </View>
+        <View style={[styles.mapDot, { backgroundColor: m.color }]} />
+        <Text style={[styles.cardName, state === 'locked' && { color: UI.dim }]} numberOfLines={1}>
+          {mapName(m)}
         </Text>
-      )}
-      {p.car && (
-        <View style={[styles.carOnNode, { left: (size - 64) / 2 }]} pointerEvents="none">
-          <CarArt model={carByKey(p.car)} width={64} />
-        </View>
-      )}
-      {p.fresh && <View style={styles.freshDot} />}
-      {p.gift && (
-        <Image source={ICONS.chest} style={[styles.giftOnNode, p.giftTaken && { opacity: 0.5 }]} />
-      )}
-    </View>
-  );
-}
-
-function Clouds({ width, next, lastShown }: { width: number; next: MapInfo[]; lastShown: MapInfo }) {
-  const drift = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(drift, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(drift, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [drift]);
-  const H = 360;
-  const theme = themeOfMap(next[0].key);
-  return (
-    <View style={{ width, height: H, overflow: 'hidden', backgroundColor: theme.ground[0] }}>
-      {/* sonraki bölümün silik izi */}
-      {theme.props.slice(0, 3).map((pr, k) => (
-        <Image key={k} source={MAP_PROPS[pr]} style={{ position: 'absolute', left: (k * width) / 3 + 10, top: 120 + (k % 2) * 60, width: 110, height: 110, opacity: 0.5 }} />
-      ))}
-      {Array.from({ length: 22 }, (_, k) => {
-        const r = 50 + rnd(k, 1) * 50;
-        const x = rnd(k, 2) * width;
-        const y = rnd(k, 3) * H;
-        const tx = drift.interpolate({ inputRange: [0, 1], outputRange: [0, (k % 2 ? 1 : -1) * 18] });
-        return (
-          <Animated.View
-            key={k}
-            style={{ position: 'absolute', left: x - r, top: y - r, width: r * 2, height: r * 2, borderRadius: r, backgroundColor: k % 3 ? '#F4F7FB' : '#E1E8F0', opacity: 0.93, transform: [{ translateX: tx }] }}
-          />
-        );
-      })}
-      <View style={styles.cloudCenter}>
-        <Image source={ICONS.lock} style={{ width: 78, height: 78 }} />
-        <Text style={styles.cloudTitle}>{next.map((m) => m.icon).join('  ')}</Text>
-        <Text style={styles.cloudText}>{t('map.cloud', { name: t(`map.${lastShown.key}` as Key) })}</Text>
+        {state === 'done' && <Text style={styles.cardStat}>★ {starSum}/{m.size * 3}</Text>}
+        {state === 'current' && <Text style={[styles.cardStat, { color: '#9FE2FF' }]}>{doneCount}/{m.size}</Text>}
+        {state === 'locked' ? (
+          <Shake every={2200}>
+            <Image source={ICONS.lock} style={styles.headIcon} />
+          </Shake>
+        ) : (
+          <Shake on={state === 'current'} every={2600}>
+            <Image source={ICONS.chest} style={[styles.headIcon, claimed && { opacity: 0.45 }]} />
+          </Shake>
+        )}
       </View>
+      <View style={styles.cardRow}>
+        {state === 'locked' ? (
+          <Hazard w={p.w - 26} />
+        ) : state === 'next' ? (
+          <>
+            {Array.from({ length: 7 }, (_, i) => (
+              <View key={i} style={styles.emptyBay} />
+            ))}
+            <Text style={styles.nextText}>0/{m.size}</Text>
+          </>
+        ) : state === 'done' ? (
+          Array.from({ length: 7 }, (_, i) => <MiniCar key={i} color={CAR_COLORS[(i + m.index) % 7]} />)
+        ) : (
+          <>
+            {Array.from({ length: Math.min(doneCount, 4) }, (_, i) => (
+              <Bob key={i} px={2} ms={700} delay={i * 180}>
+                <MiniCar color={CAR_COLORS[(i + m.index) % 7]} />
+              </Bob>
+            ))}
+            <Bob px={3} ms={500} style={{ overflow: 'visible' }}>
+              <CarArt model={carByKey(progress.favoriteCar)} width={46} />
+            </Bob>
+            <View style={{ flex: 1 }} />
+            <Pop>
+              <Pressable onPress={p.onOpen} hitSlop={6} style={styles.enter}>
+                <Text style={styles.enterText}>{t('map.enter')} ▶</Text>
+              </Pressable>
+            </Pop>
+          </>
+        )}
+      </View>
+      {state === 'locked' && <View style={styles.veil} pointerEvents="none" />}
+    </Pressable>
+  );
+}
+
+const LOOK = {
+  done: { bg: '#1C3A2A', border: '#3BCE7A' },
+  current: { bg: '#13223A', border: UI.accent },
+  next: { bg: '#16263D', border: '#2F4C74' },
+  locked: { bg: '#141C2B', border: '#2A3A55' },
+};
+
+export function MiniCar({ color, w = 26, h = 14 }: { color: string; w?: number; h?: number }) {
+  return (
+    <View style={[styles.mini, { backgroundColor: color, width: w, height: h }]}>
+      <View style={[styles.miniCab, { width: w * 0.4, height: h * 0.55 }]} />
     </View>
   );
 }
 
-function Chip({ text, gold }: { text: string; gold?: boolean }) {
+export function Hazard({ w, h = 16 }: { w: number; h?: number }) {
   return (
-    <View style={[styles.chip, gold && { backgroundColor: UI.gold }]}>
-      <Text style={[styles.chipText, gold && { color: UI.bg }]}>{text}</Text>
+    <View style={[styles.hazard, { width: w, height: h }]}>
+      {Array.from({ length: Math.ceil(w / 20) + 2 }, (_, i) => (
+        <View key={i} style={[styles.stripe, { left: i * 20 - 14, height: h * 2.2, top: -h * 0.6 }]} />
+      ))}
+    </View>
+  );
+}
+
+function Divider({ section, maps, y, w, claimed, open }: { section: number; maps: MapInfo[]; y: number; w: number; claimed: boolean; open: boolean }) {
+  return (
+    <View style={[styles.div, { top: y, width: w }, !open && { borderColor: '#2A3A55' }]}>
+      <Image source={ICONS[open ? 'chest-gold' : 'lock']} style={{ width: 36, height: 36, opacity: claimed ? 0.5 : 1 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.divKicker}>{t('map.section', { n: section + 1 })}</Text>
+        <Text style={styles.divName} numberOfLines={1}>
+          {maps.map(mapName).join(' · ')}
+        </Text>
+      </View>
+      <Text style={styles.divReward}>{claimed ? '✓' : `🎟 +${TICKET_REWARD.section}`}</Text>
+    </View>
+  );
+}
+
+/** Tören öncesi: kilit kırılır, ışık patlar */
+function Unlocking({ section }: { section: number }) {
+  return (
+    <View style={styles.unlock} pointerEvents="none">
+      <Pop k={1.25} ms={300}>
+        <Shake every={0}>
+          <Image source={ICONS.lock} style={{ width: 120, height: 120 }} />
+        </Shake>
+      </Pop>
+      <Text style={styles.unlockText}>{t('map.section', { n: section + 1 })}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: { position: 'absolute', left: 16, right: 16, top: 16, height: 62, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderWidth: 3, borderColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
-  bannerIcon: { fontSize: 30 },
-  bannerTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 2 } },
-  bannerSub: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '800' },
-  bannerDone: { color: '#FFFFFF', fontSize: 26, fontWeight: '900' },
-  newBadge: { backgroundColor: UI.danger, color: '#fff', fontSize: 12, fontWeight: '900', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, overflow: 'hidden' },
-  node: { alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: '#FFFFFF', backgroundColor: '#7D8796', shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 4, shadowOffset: { width: 0, height: 3 } },
-  nodeNext: { backgroundColor: 'rgba(40,50,70,0.55)', borderColor: 'rgba(255,255,255,0.7)' },
-  nodeNum: { color: '#FFFFFF', fontSize: 19, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.3)', textShadowRadius: 2, textShadowOffset: { width: 0, height: 1 } },
-  nodeStars: { color: '#FFD23F', fontSize: 14, letterSpacing: -1, marginTop: -6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 2, textShadowOffset: { width: 0, height: 1 } },
-  ring: { position: 'absolute', top: 0, left: 0, borderWidth: 4 },
-  carOnNode: { position: 'absolute', top: -34 },
-  freshDot: { position: 'absolute', top: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: UI.danger, borderWidth: 3, borderColor: '#FFFFFF' },
-  giftOnNode: { position: 'absolute', right: -40, top: 2, width: 44, height: 44 },
-  reward: { position: 'absolute', left: 16, right: 16, bottom: 18, height: 74, borderRadius: 20, backgroundColor: 'rgba(15,27,45,0.88)', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderWidth: 2, borderColor: UI.gold },
-  rewardTaken: { borderColor: UI.accent, backgroundColor: 'rgba(15,27,45,0.7)' },
-  rewardChest: { width: 50, height: 50 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, flex: 1 },
-  chip: { backgroundColor: UI.panelHi, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  chipText: { color: UI.text, fontWeight: '900', fontSize: 13 },
-  rewardLabel: { color: UI.gold, fontWeight: '900', fontSize: 13 },
-  cloudCenter: { position: 'absolute', left: 30, right: 30, top: 80, alignItems: 'center', gap: 6, backgroundColor: 'rgba(15,27,45,0.78)', borderRadius: 24, padding: 18 },
-  cloudTitle: { fontSize: 30 },
-  cloudText: { color: UI.text, fontSize: 16, fontWeight: '800', textAlign: 'center' },
-  sheetTitle: { color: UI.text, fontSize: 26, fontWeight: '900' },
-  sheetStars: { color: UI.gold, fontSize: 34, letterSpacing: 4 },
-  sheetSub: { color: UI.dim, fontSize: 15, textAlign: 'center' },
+  ramp: { position: 'absolute', height: 30, backgroundColor: '#545B6B', borderWidth: 3, borderColor: '#1A1D26', borderRadius: 14, justifyContent: 'center' },
+  rampLine: { height: 0, borderTopWidth: 2, borderStyle: 'dashed', borderColor: '#F2E3B8', marginHorizontal: 8 },
+  light: { position: 'absolute', backgroundColor: '#1A1D26', borderRadius: 7, padding: 3 },
+  lamp: { width: 10, height: 10, borderRadius: 5 },
+  card: { position: 'absolute', left: 12, height: FLOOR_H, borderRadius: 18, borderWidth: 3, padding: 10, gap: 8, overflow: 'hidden' },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  kat: { backgroundColor: UI.bg, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
+  katText: { color: UI.gold, fontSize: 11, fontWeight: '900' },
+  mapDot: { width: 8, height: 8, borderRadius: 4 },
+  cardName: { flex: 1, color: UI.text, fontSize: 17, fontWeight: '900' },
+  cardStat: { color: '#8FF0B4', fontSize: 13, fontWeight: '900' },
+  headIcon: { width: 28, height: 28 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 5, borderTopWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.22)', paddingTop: 9, minHeight: 44 },
+  mini: { borderRadius: 5, borderWidth: 2, borderColor: '#1A1D26', alignItems: 'center', justifyContent: 'center' },
+  miniCab: { backgroundColor: '#1E2636', borderRadius: 3 },
+  emptyBay: { width: 22, height: 14, borderRadius: 4, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(242,227,184,0.4)' },
+  nextText: { color: UI.dim, fontWeight: '900', fontSize: 13, marginLeft: 'auto' },
+  enter: { backgroundColor: UI.accent, borderRadius: 11, paddingHorizontal: 11, paddingVertical: 6 },
+  enterText: { color: UI.bg, fontWeight: '900', fontSize: 14 },
+  hazard: { borderRadius: 8, overflow: 'hidden', backgroundColor: '#1A1D26', opacity: 0.6 },
+  stripe: { position: 'absolute', width: 10, backgroundColor: UI.gold, transform: [{ rotate: '35deg' }] },
+  veil: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,27,45,0.25)' },
+  div: { position: 'absolute', left: 12, height: DIV_H, borderRadius: 16, borderWidth: 2, borderColor: UI.gold, backgroundColor: '#2E2810', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12 },
+  divKicker: { color: UI.gold, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  divName: { color: UI.text, fontSize: 14, fontWeight: '900' },
+  divReward: { color: '#8FF0B4', fontWeight: '900', fontSize: 14 },
+  cloud: { position: 'absolute', left: 0 },
+  cloudShape: { width: 200, height: 70, borderRadius: 40, backgroundColor: 'rgba(231,238,247,0.2)' },
+  more: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: UI.dim, fontSize: 12 },
+  unlock: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(5,10,20,0.6)', gap: 12, zIndex: 40 },
+  unlockText: { color: UI.gold, fontSize: 22, fontWeight: '900', letterSpacing: 2 },
 });
